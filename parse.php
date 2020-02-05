@@ -1,6 +1,8 @@
 #!/usr/bin/env php
 <?php
 
+include 'libs/instruction.php';
+
 checkArguments();
 
 //load first line
@@ -12,11 +14,33 @@ $line = preg_replace('/\s/', "", $line);
 
 //check first line
 if ($line != ".IPPcode20")
-    error(21, "PARSER ERROR: Invalid header");
+    error(21, "PARSER ERROR: Invalid header, language is not defined");
 
+//create basic XML document 
+$xml_doc = createDoc();
+
+SaveDocExit($xml_doc);
+
+
+function createDoc()
+{
+    $doc = new DomDocument("1.0", "UTF-8");
+
+    $doc->formatOutput = true;
+    $program = $doc->createElement("program");
+    $doc->appendChild($program);
+    return $doc;
+    
+}
+
+function SaveDocExit($doc)
+{
+    $doc->save("out.xml");
+	exit(0);
+}
 
 /**
- * brief: checks arguments and call exit if:
+ * brief:   checks arguments and call exit if:
  *          -wrong number of parameters
  *          -parameter "--help" was entered  
  */
@@ -45,5 +69,4 @@ function error($err_val, $err_msg){
     fputs(STDERR, "$err_msg\n");
     exit($err_val);
 }
-
 ?>
