@@ -3,7 +3,7 @@ DEFVAR GF@counter
 MOVE GF@counter string@ # Init of empty string
 # Simple loop with simple condition
 LABEL while
-JUMPIFEQ end GF@counter string@aaa
+JUMPIFEQ end GF@counter string@
 WRITE string@counter \032 contains \032
 WRITE GF@counter
 WRITE string@ \010
