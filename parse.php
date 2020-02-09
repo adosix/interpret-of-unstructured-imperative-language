@@ -39,28 +39,10 @@ while($line = fgets(STDIN)){
     $order_write = $xml_doc->createElement("order",$order);
     $instruction->appendChild($order_write);
 
-    $n_of_args = count($parsed_line) - 1;
-    if($n_of_args >= 1){
-        $arg = $xml_doc->createElement('arg1',$parsed_line[1]);
-        $instruction->appendChild($arg);
-    }
-    if($n_of_args >= 2){
-        $arg = $xml_doc->createElement('arg2',$parsed_line[2]);
-        $instruction->appendChild($arg);
-    }
-    if($n_of_args >= 3){
-        $arg = $xml_doc->createElement('arg3',$parsed_line[3]);
-        $instruction->appendChild($arg);
-    }
-    if($n_of_args >= 4){
-        $arg = $xml_doc->createElement('arg4',$parsed_line[4]);
-        $instruction->appendChild($arg);
-    }
 
-    $order = $order + 1;
-    }
+    $xml_doc = checkSyntax($parsed_line, $instruction, $xml_doc);
+     }
 }
-
 //get final document
 SaveDocExit($xml_doc);
 
@@ -80,129 +62,195 @@ function parse($line){
     if(count($parsed_line) == 0){
         return 1;
     }
-    $parsed_line = checkSyntax($parsed_line);
-
-    if($parsed_line == 10){
-        return 1;
-    }
-    else{
-        return $parsed_line;
-    } 
+    return $parsed_line;
     
 }
 
-function checkSyntax($parsed_line){
+function addArg($doc, $instruction, $type, $parsed_line, $argn){
+    $arg = $doc->createElement($argn);
+    $instruction->appendChild($arg);
+    $var = $doc->createElement($type, $parsed_line[1]);
+    $arg->appendChild($var);
+    return $doc;
+}
+
+function checkSyntax($parsed_line, $instruction, $doc){
     $parsed_line[0] = strtoupper($parsed_line[0]);
+    $arg_count = count($parsed_line) - 1;
+    $inv_n_params = "invalid number of parameter (" . $arg_count . ") of the function "; 
     switch($parsed_line[0]){
         // MOVE ⟨var⟩ ⟨symb⟩
         case "MOVE":
+            if($arg_count != 2)
+            {
+                error(23, "$inv_n_params" . "MOVE");
+            }
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg2');
+            
             break;
         // CREATEFRAME
         case "CREATEFRAME":
-            break;
         // PUSHFRAME
         case "PUSHFRAME":
-            break;
         // POPFRAME
         case "POPFRAME":
+        // RETURN
+        case "RETURN":
+            if($arg_count != 0)
+            {
+                error(23, "$inv_n_params" . "POPFRAME");
+            }
             break;
         // DEFVAR ⟨var⟩
         case "DEFVAR":
+            if($arg_count != 1)
+            {
+                error(23, "$inv_n_params" . "DEFVAR");
+            }
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
             break;
         // CALL ⟨label⟩
         case "CALL":
-            break;
-        // RETURN
-        case "RETURN":
+            if($arg_count != 1)
+            {
+                error(23, "$inv_n_params" . "CALL");
+            }
+            $doc = addArg($doc, $instruction, 'label', $parsed_line, 'arg1');
             break;
         // PUSHS ⟨symb⟩
         case "PUSHS":
+            if($arg_count != 1)
+            {
+                error(23, "$inv_n_params" . "PUSHS");
+            }
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg1');
             break;
         // POPS ⟨var⟩
         case "POPS":
+            if($arg_count != 1)
+            {
+                error(23, "$inv_n_params" . "POPS");
+            }
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
             break;
-        // ADD ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // ADD      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "ADD":
-            break;
-        // SUB ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // SUB      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "SUB":
-            break;
-        // MUL ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // MUL      ⟨var⟩(symb 1 ⟩ ⟨symb 2 ⟩
         case "MUL":
-            break;
-        // IDIV ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // IDIV     ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "IDIV":
-            break;
-        // LT ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // LT       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "LT":
-            break;
-        // GT ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // GT       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "GT":
-            break;
-        // EQ ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // EQ       ⟨var⟩symb 1 ⟩ ⟨symb 2 ⟩
         case "EQ":
-            break;
-        // AND ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // AND      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "AND":
-            break;
-        // OR ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // OR       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "OR":
-            break;
-        // NOT ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // STRI2INT ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+        case "STRI2INT":
+        // CONCAT   ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+        case "CONCAT":
+        // GETCHAR  ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+        case "GETCHAR":
+        // SETCHAR  ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+        case "SETCHAR":
+        // NOT      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "NOT":
+            if($arg_count != 3)
+            {
+                error(23, "$inv_n_params");
+            }
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg2');
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg3');
             break;
         // INT2CHAR ⟨var⟩ ⟨symb⟩
         case "INT2CHAR":
+            if($arg_count != 2)
+            {
+                error(23, "$inv_n_params");
+            }
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg2');
             break;
-        // STRI2INT ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
-        case "STRI2INT":
-            break;
+
         // READ ⟨var⟩ ⟨type⟩
         case "READ":
+            if($arg_count != 2)
+            {
+                error(23, "$inv_n_params");
+            }
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
+            $doc = addArg($doc, $instruction, 'type', $parsed_line, 'arg2');
             break;
         // WRITE ⟨symb⟩
         case "WRITE":
-            break;
-        // CONCAT ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
-        case "CONCAT":
+            if($arg_count != 1)
+            {
+                error(23, "$inv_n_params" . "WRITE");
+            }
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg1');
             break;
         // STRLEN ⟨var⟩ ⟨symb⟩
         case "STRLEN":
-            break;
-        // GETCHAR ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
-        case "GETCHAR":
-            break;
-        // SETCHAR ⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
-        case "SETCHAR":
-            break;
         // TYPE ⟨var⟩ ⟨symb⟩
         case "TYPE":
+            if($arg_count != 2)
+            {
+                error(23, "$inv_n_params");
+            }
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg2');
             break;
         // LABEL ⟨label⟩
         case "LABEL":
-            break;
         // JUMP ⟨label⟩
         case "JUMP":
+            if($arg_count != 1)
+            {
+                error(23, "$inv_n_params");
+            }
+            $doc = addArg($doc, $instruction, 'label', $parsed_line, 'arg1');
             break;
-        // JUMPIFEQ ⟨label⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // JUMPIFEQ     ⟨label⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "JUMPIFEQ":
-            break;
-        // JUMPIFNEQ ⟨label⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+        // JUMPIFNEQ    ⟨label⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "JUMPIFNEQ":
+            if($arg_count != 3)
+            {
+                error(23, "$inv_n_params");
+            }
+            $doc = addArg($doc, $instruction, 'label', $parsed_line, 'arg1');
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg2');
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg3');
             break;
         // EXIT ⟨symb⟩
         case "EXIT":
-            break;
         // DPRINT ⟨symb⟩
         case "DPRINT":
+            if($arg_count != 1)
+            {
+                error(23, "$inv_n_params");
+            }
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg1');
             break;
         // BREAK
         case "BREAK":
+            if($arg_count != 0)
+            {
+                error(23, "$inv_n_params");
+            }
             break;
         default:
             error(21, "PARSER ERROR: Invalid opcode \"" . $parsed_line[0] . "\" ");
     }
-    return $parsed_line;
+    return $doc;
 }
 
 function createDoc(){
