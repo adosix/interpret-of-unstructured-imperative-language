@@ -11,7 +11,7 @@ if (!$line = fgets(STDIN))
 $line = preg_replace("/#.*$/", "", $line);
 $line = preg_replace('/\s/', "", $line);
 
-echo $line;
+//echo $line;
 //check first line
 if ($line != ".IPPcode20")
     error(21, "PARSER ERROR: Invalid header");
@@ -21,98 +21,139 @@ $order = 1;
 
 //create basic XML document 
 $xml_doc = createDoc();
-$program = $xml_doc ->createElement("program");
+$program = $xml_doc->createElement("program");
 $xml_doc->appendChild($program);
+$lang = $xml_doc->createAttribute("language");
+$lang->value = $line;
+$program->appendChild($lang);
 
 //parse input doc and create xml doc
-while($line = fgets(STDIN)){     
-    
+while ($line = fgets(STDIN)) {
     $parsed_line = parse($line);
-     if($parsed_line != 1){ 
-        
-    $instruction = $xml_doc->createElement("instruction");
-    $program->appendChild($instruction);
-
-    $op_code = $xml_doc->createElement("opcode",$parsed_line[0]);
-    $instruction->appendChild($op_code);
-
-    $order_write = $xml_doc->createElement("order",$order);
-    $instruction->appendChild($order_write);
-    $order =  $order + 1;
-
-    $xml_doc = checkSyntaxI($parsed_line, $instruction, $xml_doc);
-     }
+    if ($parsed_line != 1) {
+        $ins_doc = addInstructionSkeleton($xml_doc, $program, $order, $parsed_line);
+        $xml_doc = $ins_doc[0];
+        $instruction =$ins_doc[1]; 
+        $order =  $order + 1;
+        $xml_doc = checkSyntaxI($parsed_line, $instruction, $xml_doc);
+    }
 }
 //get final document
 SaveDocExit($xml_doc);
 
-function parse($line){
+//------------------------------------------------------
+//---------------------FUNCTIONS------------------------
+//------------------------------------------------------
+
+function addInstructionSkeleton($doc, $program, $order, $parsed_line){
+    $instruction = $doc->createElement("instruction");
+    $program->appendChild($instruction);
+
+    $order_write = $doc->createAttribute("order");
+    $order_write->value = $order;
+    $instruction->appendChild($order_write);
+
+    $op_code = $doc->createAttribute("opcode");
+    $op_code->value = $parsed_line[0];
+    $instruction->appendChild($op_code);
+
+    $ret_vals = array($doc, $instruction);
+    return $ret_vals;
+}
+
+function parse($line)
+{
     $line = preg_replace("/#.*$/", "", $line);
-    $line = preg_replace( "/\r|\n|\x1a/", "", $line);
+    $line = preg_replace("/\r|\n|\x1a/", "", $line);
     $parsed_line = explode(' ', $line);
-    
+
     $i = 0;     //to know on which element am I
     //deletes an elemet which contains nothing a = ""
     foreach ($parsed_line as $word) {
-        if($word == ""){
+        if ($word == "") {
             unset($parsed_line[$i]);
         }
         $i = $i + 1;
-    } 
-    if(count($parsed_line) == 0){
+    }
+    if (count($parsed_line) == 0) {
         return 1;
     }
     return $parsed_line;
-    
 }
 
-function addArg($doc, $instruction, $type, $parsed_line, $argn){
-    if($type == "var" || $type == "symb")
-        $arg_parts =  checkSyntaxVar($parsed_line[$argn], $type);
-    else if($type == "label")
-        $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);     
-    else if($type == "type")
-        $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);    
-    else 
+/**
+ * brief:   Adds the argument to the function to xml file 
+ *          Exits with code '99' if there were internal error
+ * @param $doc = xml document (output of the program)
+ * @param $argn = number of argument which is going to be added
+ * @param $instruction = element of xml file to which we are going to add argument
+ * @param $type = type of argument which is going to be added 
+ * @param $parsed_line = parsed line which cointains whole instruction 
+ */
+function addArg($doc, $instruction, $type, $parsed_line, $argn)
+{
+
+    if ($type == "var" || $type == "symb") {
+        $type = "var";
+        $arg_parts =  checkSyntaxVar($parsed_line[$argn], "var");
+        $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
+    } else if ($type == "label") {
+        $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);
+        $arg = $doc->createElement("arg" . $argn, $arg_parts);
+    } else if ($type == "type") {
+        $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);
+        $arg = $doc->createElement("arg" . $argn, $arg_parts);
+    } else
         error(99, "PARSER ERROR: Internal error, type not recognized");
-    $arg = $doc->createElement("arg" . $argn);
+
     $instruction->appendChild($arg);
-    if(count($arg_parts)==2){
-        $arg_child = $doc->createElement($arg_parts[0], $arg_parts[1]);
-    }
-    else if(count($arg_parts)==1){
-        $arg_child = $doc->createElement($type, $arg_parts[0]);
-    }
-    else{
-        error(99, "PARSER ERROR: Wrong number of argument parts: ". count($arg_parts));
-    }
-    
-    $arg->appendChild($arg_child);
+
+    $arg_attribute = $doc->createAttribute("type");
+    $arg_attribute->value = $type;
+
+    $arg->appendChild($arg_attribute);
     return $doc;
 }
-function checkSyntaxLabel($arg){
-    if(!preg_match("/^[[:alpha:]_\-$&%*][[:alnum:]_\-$&%*]*$/", $arg))
+
+/**
+ * brief:   Checks syntax of argument (label/second part of var)
+ *          exits if there is syntactic error
+ * @param $arg = it's label/second part of var wich is going to be checked in this function
+ */
+function checkSyntaxLabel($arg)
+{
+    if (!preg_match("/^[[:alpha:]_\-$&%*][[:alnum:]_\-$&%*]*$/", $arg))
         error(23, "PARSER ERROR: Invalid characters in argument \r\n" . $arg . " var / label");
-    $arg_parts = explode("@", $arg);
-    return $arg_parts;
+    return $arg;
 }
 
-function checkSyntaxVar($arg){
-    
+/**
+ * brief:   Checks syntax of argument (var)
+ *          decide of which type the variable is 
+ *          and if needed divide variable into two parts
+ *          firstpart@secondpart
+ *          exits if there is syntactic error
+ * @param $arg = it's variable which is going to be checked in this funtion
+ */
+function checkSyntaxVar($arg)
+{
     $arg_parts = explode("@", $arg, 2);
-    if(count($arg_parts) != 2){
+    if (count($arg_parts) != 2) {
         print($arg . " var");
         error(23, "PARSER ERROR: \'@\' has to be present in argument \r\n" . $arg . " var");
     }
-    switch($arg_parts[0]){
+    switch ($arg_parts[0]) {
         case "int":
-            if(!preg_match("/^[-[:alpha:]\_$&%*][-[:alnum:]\_$&%*]*$/", $arg_parts[1]));
+            if (!preg_match("/^[-[:alpha:]\_$&%*][-[:alnum:]\_$&%*]*$/", $arg_parts[1]));
             break;
         case "string":
-            
+            if($arg_parts[1] != ""){
+                if (!preg_match('/^(\\\\[0-9]{3}|[^\\\\])*$/',  $arg_parts[1]))
+                    error(23, "PARSER ERROR: string can have only escape sequences from \\000 to \\999 \r\n" . $arg . " var");
+            }
             break;
         case "bool":
-            if($arg_parts[1] != "true" || $arg_parts[1] != "false")
+            if ($arg_parts[1] != "true" && $arg_parts[1] != "false")
                 error(23, "PARSER ERROR: bool value can be only \"true\" or \"false\" \r\n" . $arg . " var");
             break;
         case "LF":
@@ -122,158 +163,160 @@ function checkSyntaxVar($arg){
             break;
         default:
             error(23, "PARSER ERROR: Invalid type of argument \r\n" . $arg_parts[0] . " @ " . $arg_parts[1]);
-        }
+    }
     return $arg_parts;
 }
 
-function checkSyntaxI($parsed_line, $instruction, $doc){
+/**
+ * brief:   Checks syntax of instruction / one row
+ *          defines which instruction it's processing and calls other
+ *          function to check arguments 
+ *          returns $doc which could be edited
+ * @param $parsed_line = parsed line from standard input
+ * @param $instruction = element of xml file
+ * @param $doc = whole xml document (output of the program)
+ */
+function checkSyntaxI($parsed_line, $instruction, $doc)
+{
     $parsed_line[0] = strtoupper($parsed_line[0]);
     $arg_count = count($parsed_line) - 1;
-    $inv_n_params = "invalid number of parameter (" . $arg_count . ") of the function "; 
-    switch($parsed_line[0]){
-        //---------------------------------------------------
-        //-----------------param(s) :       -----------------
-        //---------------------------------------------------
-        // BREAK
+    $inv_n_params = "invalid number of parameter (" . $arg_count . ") of the function ";
+    switch ($parsed_line[0]) {
+            //---------------------------------------------------
+            //-----------------param(s) :       -----------------
+            //---------------------------------------------------
+            // BREAK
         case "BREAK":
-        // CREATEFRAME
+            // CREATEFRAME
         case "CREATEFRAME":
-        // PUSHFRAME
+            // PUSHFRAME
         case "PUSHFRAME":
-        // POPFRAME
+            // POPFRAME
         case "POPFRAME":
-        // RETURN
+            // RETURN
         case "RETURN":
-            if($arg_count != 0)
-            {
+            if ($arg_count != 0) {
                 error(23, "$inv_n_params" . "POPFRAME");
             }
             break;
-        //---------------------------------------------------
-        //-----------------param(s) : label -----------------
-        //---------------------------------------------------
-        // LABEL ⟨label⟩
+            //---------------------------------------------------
+            //-----------------param(s) : label -----------------
+            //---------------------------------------------------
+            // LABEL ⟨label⟩
         case "LABEL":
-        // JUMP ⟨label⟩
+            // JUMP ⟨label⟩
         case "JUMP":
-        // CALL ⟨label⟩
+            // CALL ⟨label⟩
         case "CALL":
-            if($arg_count != 1)
-            {
+            if ($arg_count != 1) {
                 error(23, "$inv_n_params" . "CALL");
             }
             $doc = addArg($doc, $instruction, 'label', $parsed_line, 1);
             break;
-        //---------------------------------------------------
-        //-----------------param(s) : var   -----------------
-        //---------------------------------------------------
-        // DEFVAR ⟨var⟩
+            //---------------------------------------------------
+            //-----------------param(s) : var   -----------------
+            //---------------------------------------------------
+            // DEFVAR ⟨var⟩
         case "DEFVAR":
-        // POPS ⟨var⟩
+            // POPS ⟨var⟩
         case "POPS":
-            if($arg_count != 1)
-            {
+            if ($arg_count != 1) {
                 error(23, "$inv_n_params" . "POPS");
             }
             $doc = addArg($doc, $instruction, 'var', $parsed_line, 1);
             break;
-        //---------------------------------------------------
-        //-----------------param(s) : symb ------------------
-        //---------------------------------------------------
-        // PUSHS ⟨symb⟩
+            //---------------------------------------------------
+            //-----------------param(s) : symb ------------------
+            //---------------------------------------------------
+            // PUSHS ⟨symb⟩
         case "PUSHS":
-        // WRITE ⟨symb⟩
+            // WRITE ⟨symb⟩
         case "WRITE":
-        // EXIT ⟨symb⟩
+            // EXIT ⟨symb⟩
         case "EXIT":
-        // DPRINT ⟨symb⟩
+            // DPRINT ⟨symb⟩
         case "DPRINT":
-            if($arg_count != 1)
-            {
+            if ($arg_count != 1) {
                 error(23, "$inv_n_params");
             }
-            $doc = addArg($doc, $instruction, 'symb', $parsed_line,1);
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 1);
             break;
-        //---------------------------------------------------
-        //-----------------param(s) : var, type--------------
-        //---------------------------------------------------
-        // READ ⟨var⟩ ⟨type⟩
+            //---------------------------------------------------
+            //-----------------param(s) : var, type--------------
+            //---------------------------------------------------
+            // READ ⟨var⟩ ⟨type⟩
         case "READ":
-            if($arg_count != 2)
-            {
+            if ($arg_count != 2) {
                 error(23, "$inv_n_params");
             }
             $doc = addArg($doc, $instruction, 'var', $parsed_line, 1);
             $doc = addArg($doc, $instruction, 'type', $parsed_line, 2);
             break;
-        //---------------------------------------------------
-        //-----------------param(s) : symb , var-------------
-        //---------------------------------------------------
-        // MOVE     ⟨var⟩ ⟨symb⟩
+            //---------------------------------------------------
+            //-----------------param(s) : symb , var-------------
+            //---------------------------------------------------
+            // MOVE     ⟨var⟩ ⟨symb⟩
         case "MOVE":
-        // INT2CHAR ⟨var⟩ ⟨symb⟩
+            // INT2CHAR ⟨var⟩ ⟨symb⟩
         case "INT2CHAR":
-        // STRLEN   ⟨var⟩ ⟨symb⟩
+            // STRLEN   ⟨var⟩ ⟨symb⟩
         case "STRLEN":
-        // NOT      ⟨var⟩⟨symb⟩
+            // NOT      ⟨var⟩⟨symb⟩
         case "NOT":
-        // TYPE ⟨var⟩ ⟨symb⟩
+            // TYPE ⟨var⟩ ⟨symb⟩
         case "TYPE":
-            if($arg_count != 2)
-            {
+            if ($arg_count != 2) {
                 error(23, "$inv_n_params" . "MOVE");
             }
             $doc = addArg($doc, $instruction, 'var', $parsed_line, 1);
             $doc = addArg($doc, $instruction, 'symb', $parsed_line, 2);
-            
+
             break;
-        //---------------------------------------------------
-        //-----------------param(s) : var, symb1, symb2------
-        //---------------------------------------------------
-        // ADD      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            //---------------------------------------------------
+            //-----------------param(s) : var, symb1, symb2------
+            //---------------------------------------------------
+            // ADD      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "ADD":
-        // SUB      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // SUB      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "SUB":
-        // MUL      ⟨var⟩(symb 1 ⟩ ⟨symb 2 ⟩
+            // MUL      ⟨var⟩(symb 1 ⟩ ⟨symb 2 ⟩
         case "MUL":
-        // IDIV     ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // IDIV     ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "IDIV":
-        // LT       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // LT       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "LT":
-        // GT       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // GT       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "GT":
-        // EQ       ⟨var⟩symb 1 ⟩ ⟨symb 2 ⟩
+            // EQ       ⟨var⟩symb 1 ⟩ ⟨symb 2 ⟩
         case "EQ":
-        // AND      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // AND      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "AND":
-        // OR       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // OR       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "OR":
-        // STRI2INT ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // STRI2INT ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "STRI2INT":
-        // CONCAT   ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // CONCAT   ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "CONCAT":
-        // GETCHAR  ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // GETCHAR  ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "GETCHAR":
-        // SETCHAR  ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // SETCHAR  ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "SETCHAR":
 
-            if($arg_count != 3)
-            {
+            if ($arg_count != 3) {
                 error(23, "$inv_n_params");
             }
             $doc = addArg($doc, $instruction, 'var', $parsed_line, 1);
             $doc = addArg($doc, $instruction, 'symb', $parsed_line, 2);
             $doc = addArg($doc, $instruction, 'symb', $parsed_line, 3);
             break;
-        //---------------------------------------------------
-        //-----------------param(s) : label, symb1, symb2----
-        //---------------------------------------------------
-        // JUMPIFEQ     ⟨label⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+            //---------------------------------------------------
+            //-----------------param(s) : label, symb1, symb2----
+            //---------------------------------------------------
+            // JUMPIFEQ     ⟨label⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "JUMPIFEQ":
-        // JUMPIFNEQ    ⟨label⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+            // JUMPIFNEQ    ⟨label⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "JUMPIFNEQ":
-            if($arg_count != 3)
-            {
+            if ($arg_count != 3) {
                 error(23, "$inv_n_params");
             }
             $doc = addArg($doc, $instruction, 'label', $parsed_line, 1);
@@ -285,8 +328,11 @@ function checkSyntaxI($parsed_line, $instruction, $doc){
     }
     return $doc;
 }
-
-function createDoc(){
+/**
+ * brief:   Creates document and returns it
+ */
+function createDoc()
+{
     $doc = new DomDocument("1.0", "UTF-8");
 
     $doc->formatOutput = true;
@@ -298,10 +344,10 @@ function createDoc(){
  * brief:   saves file and exits program
  * @param $doc = file to save
  */
-
-function SaveDocExit($doc){
+function SaveDocExit($doc)
+{
     $doc->save("php://stdout");
-	exit(0);
+    exit(0);
 }
 
 /**
@@ -309,27 +355,31 @@ function SaveDocExit($doc){
  *          -wrong number of parameters
  *          -parameter "--help" was entered  
  */
-function checkArguments(){
+function checkArguments()
+{
     global $argc;
     global $argv;
-    if($argc == 1){
+    if ($argc == 1) {
         return;
-    } 
-    elseif($argc == 2 && $argv[1] == "--help" ){
-        echo "to do help";
+    } elseif ($argc == 2 && $argv[1] == "--help") {
+        echo "
+        Usage: php7.4 parse.php --help/[std-in] \n\r
+            --help  ->  prints help message and exits program. \n\r
+            [std-in]->  is standard input which should be three-address code
+                        which will be processed and transformed into xml file \n\r";
         exit(0);
-    }
-    else
+    } else
         error(10, "PARSER ERROR: Wrong parameters of the script parse.php");
 }
 
 /**
- * brief:   function which exits program and 
- *          returns error code and error message
+ * brief:   exits program and returns
+ *          error code and error message
  * @param $err_val = error code
  * @param $err_msg = what should be written to the console
  */
-function error($err_val, $err_msg){
+function error($err_val, $err_msg)
+{
     fputs(STDERR, "$err_msg\n");
     exit($err_val);
 }
