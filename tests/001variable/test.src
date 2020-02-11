@@ -9,7 +9,4 @@ WRITE GF@counter
 WRITE string@\010
 CONCAT GF@counter GF@counter string@a
 JUMP while
-LT var sym sym
-GT var s4 s1
-GT var 8ym 7ym
 LABEL end

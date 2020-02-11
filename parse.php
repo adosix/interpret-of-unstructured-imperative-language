@@ -38,9 +38,9 @@ while($line = fgets(STDIN)){
 
     $order_write = $xml_doc->createElement("order",$order);
     $instruction->appendChild($order_write);
+    $order =  $order + 1;
 
-
-    $xml_doc = checkSyntax($parsed_line, $instruction, $xml_doc);
+    $xml_doc = checkSyntaxI($parsed_line, $instruction, $xml_doc);
      }
 }
 //get final document
@@ -67,14 +67,66 @@ function parse($line){
 }
 
 function addArg($doc, $instruction, $type, $parsed_line, $argn){
-    $arg = $doc->createElement($argn);
+    if($type == "var" || $type == "symb")
+        $arg_parts =  checkSyntaxVar($parsed_line[$argn], $type);
+    else if($type == "label")
+        $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);     
+    else if($type == "type")
+        $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);    
+    else 
+        error(99, "PARSER ERROR: Internal error, type not recognized");
+    $arg = $doc->createElement("arg" . $argn);
     $instruction->appendChild($arg);
-    $var = $doc->createElement($type, $parsed_line[1]);
-    $arg->appendChild($var);
+    if(count($arg_parts)==2){
+        $arg_child = $doc->createElement($arg_parts[0], $arg_parts[1]);
+    }
+    else if(count($arg_parts)==1){
+        $arg_child = $doc->createElement($type, $arg_parts[0]);
+    }
+    else{
+        error(99, "PARSER ERROR: Wrong number of argument parts: ". count($arg_parts));
+    }
+    
+    $arg->appendChild($arg_child);
     return $doc;
 }
+function checkSyntaxLabel($arg){
+    if(!preg_match("/^[[:alpha:]_\-$&%*][[:alnum:]_\-$&%*]*$/", $arg))
+        error(23, "PARSER ERROR: Invalid characters in argument \r\n" . $arg . " var / label");
+    $arg_parts = explode("@", $arg);
+    return $arg_parts;
+}
 
-function checkSyntax($parsed_line, $instruction, $doc){
+function checkSyntaxVar($arg){
+    
+    $arg_parts = explode("@", $arg, 2);
+    if(count($arg_parts) != 2){
+        print($arg . " var");
+        error(23, "PARSER ERROR: \'@\' has to be present in argument \r\n" . $arg . " var");
+    }
+    switch($arg_parts[0]){
+        case "int":
+            if(!preg_match("/^[-[:alpha:]\_$&%*][-[:alnum:]\_$&%*]*$/", $arg_parts[1]));
+            break;
+        case "string":
+            
+            break;
+        case "bool":
+            if($arg_parts[1] != "true" || $arg_parts[1] != "false")
+                error(23, "PARSER ERROR: bool value can be only \"true\" or \"false\" \r\n" . $arg . " var");
+            break;
+        case "LF":
+        case "GF":
+        case "TF":
+            checkSyntaxLabel($arg_parts[1]);
+            break;
+        default:
+            error(23, "PARSER ERROR: Invalid type of argument \r\n" . $arg_parts[0] . " @ " . $arg_parts[1]);
+        }
+    return $arg_parts;
+}
+
+function checkSyntaxI($parsed_line, $instruction, $doc){
     $parsed_line[0] = strtoupper($parsed_line[0]);
     $arg_count = count($parsed_line) - 1;
     $inv_n_params = "invalid number of parameter (" . $arg_count . ") of the function "; 
@@ -110,7 +162,7 @@ function checkSyntax($parsed_line, $instruction, $doc){
             {
                 error(23, "$inv_n_params" . "CALL");
             }
-            $doc = addArg($doc, $instruction, 'label', $parsed_line, 'arg1');
+            $doc = addArg($doc, $instruction, 'label', $parsed_line, 1);
             break;
         //---------------------------------------------------
         //-----------------param(s) : var   -----------------
@@ -123,7 +175,7 @@ function checkSyntax($parsed_line, $instruction, $doc){
             {
                 error(23, "$inv_n_params" . "POPS");
             }
-            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 1);
             break;
         //---------------------------------------------------
         //-----------------param(s) : symb ------------------
@@ -140,7 +192,7 @@ function checkSyntax($parsed_line, $instruction, $doc){
             {
                 error(23, "$inv_n_params");
             }
-            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg1');
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line,1);
             break;
         //---------------------------------------------------
         //-----------------param(s) : var, type--------------
@@ -151,8 +203,8 @@ function checkSyntax($parsed_line, $instruction, $doc){
             {
                 error(23, "$inv_n_params");
             }
-            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
-            $doc = addArg($doc, $instruction, 'type', $parsed_line, 'arg2');
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 1);
+            $doc = addArg($doc, $instruction, 'type', $parsed_line, 2);
             break;
         //---------------------------------------------------
         //-----------------param(s) : symb , var-------------
@@ -161,16 +213,18 @@ function checkSyntax($parsed_line, $instruction, $doc){
         case "MOVE":
         // INT2CHAR ⟨var⟩ ⟨symb⟩
         case "INT2CHAR":
-        // STRLEN ⟨var⟩ ⟨symb⟩
+        // STRLEN   ⟨var⟩ ⟨symb⟩
         case "STRLEN":
+        // NOT      ⟨var⟩⟨symb⟩
+        case "NOT":
         // TYPE ⟨var⟩ ⟨symb⟩
         case "TYPE":
             if($arg_count != 2)
             {
                 error(23, "$inv_n_params" . "MOVE");
             }
-            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
-            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg2');
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 1);
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 2);
             
             break;
         //---------------------------------------------------
@@ -202,15 +256,14 @@ function checkSyntax($parsed_line, $instruction, $doc){
         case "GETCHAR":
         // SETCHAR  ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "SETCHAR":
-        // NOT      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
-        case "NOT":
+
             if($arg_count != 3)
             {
                 error(23, "$inv_n_params");
             }
-            $doc = addArg($doc, $instruction, 'var', $parsed_line, 'arg1');
-            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg2');
-            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg3');
+            $doc = addArg($doc, $instruction, 'var', $parsed_line, 1);
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 2);
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 3);
             break;
         //---------------------------------------------------
         //-----------------param(s) : label, symb1, symb2----
@@ -223,9 +276,9 @@ function checkSyntax($parsed_line, $instruction, $doc){
             {
                 error(23, "$inv_n_params");
             }
-            $doc = addArg($doc, $instruction, 'label', $parsed_line, 'arg1');
-            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg2');
-            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 'arg3');
+            $doc = addArg($doc, $instruction, 'label', $parsed_line, 1);
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 2);
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 3);
             break;
         default:
             error(21, "PARSER ERROR: Invalid opcode \"" . $parsed_line[0] . "\" ");
