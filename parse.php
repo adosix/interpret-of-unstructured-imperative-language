@@ -45,6 +45,13 @@ SaveDocExit($xml_doc);
 //---------------------FUNCTIONS------------------------
 //------------------------------------------------------
 
+/**
+ * brief:   Adds skeleton of instruction to xml (output file)
+ * @param $doc = xml document (output of the program)
+ * @param $program = defines main element of xml file
+ * @param $order = number of instruction which will be added
+ * @param $parsed_line = parsed line from standard input (three adress code)
+ */
 function addInstructionSkeleton($doc, $program, $order, $parsed_line){
     $instruction = $doc->createElement("instruction");
     $program->appendChild($instruction);
@@ -60,7 +67,10 @@ function addInstructionSkeleton($doc, $program, $order, $parsed_line){
     $ret_vals = array($doc, $instruction);
     return $ret_vals;
 }
-
+/**
+ * brief:   will parse the input line (three adress code)
+ * @param $line = line to be parsed
+ */
 function parse($line)
 {
     $line = preg_replace("/#.*$/", "", $line);
@@ -88,7 +98,7 @@ function parse($line)
  * @param $argn = number of argument which is going to be added
  * @param $instruction = element of xml file to which we are going to add argument
  * @param $type = type of argument which is going to be added 
- * @param $parsed_line = parsed line which cointains whole instruction 
+ * @param $parsed_line = parsed line which contains whole instruction 
  */
 function addArg($doc, $instruction, $type, $parsed_line, $argn)
 {
@@ -118,7 +128,7 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
 /**
  * brief:   Checks syntax of argument (label/second part of var)
  *          exits if there is syntactic error
- * @param $arg = it's label/second part of var wich is going to be checked in this function
+ * @param $arg = it's label/second part of var which is going to be checked in this function
  */
 function checkSyntaxLabel($arg)
 {
@@ -148,7 +158,7 @@ function checkSyntaxVar($arg)
             break;
         case "string":
             if($arg_parts[1] != ""){
-                if (!preg_match('/^(\\\\[0-9]{3}|[^\\\\])*$/',  $arg_parts[1]))
+                if (!preg_match('/^(\\\\[0-9]{3}|[^\\\\])*$/',  $arg_parts[1]))         //escape sequence can be only \\000 -\\999 or \\\\
                     error(23, "PARSER ERROR: string can have only escape sequences from \\000 to \\999 \r\n" . $arg . " var");
             }
             break;
@@ -361,7 +371,8 @@ function checkArguments()
     global $argv;
     if ($argc == 1) {
         return;
-    } elseif ($argc == 2 && $argv[1] == "--help") {
+    } 
+    else if ($argc == 2 && $argv[1] == "--help") {
         echo "
         Usage: php7.4 parse.php --help/[std-in] \n\r
             --help  ->  prints help message and exits program. \n\r
