@@ -72,7 +72,7 @@ function addInstructionSkeleton($doc, $program, $order, $parsed_line){
  * @param $line = line to be parsed
  */
 function parse($line)
-{
+{    
     $line = preg_replace("/#.*$/", "", $line);
     $line = preg_replace("/\r|\n|\x1a/", "", $line);
     $parsed_line = explode(' ', $line);
@@ -102,10 +102,14 @@ function parse($line)
  */
 function addArg($doc, $instruction, $type, $parsed_line, $argn)
 {
-
+        
     if ($type == "var" || $type == "symb") {
         $type = "var";
         $arg_parts =  checkSyntaxVar($parsed_line[$argn], "var");
+
+        //substitute special characters for escape sequences
+        $parsed_line[$argn] = htmlentities($parsed_line[$argn],ENT_QUOTES,'UTF-8');
+
         $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
     } else if ($type == "label") {
         $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);
@@ -155,6 +159,7 @@ function checkSyntaxVar($arg)
     switch ($arg_parts[0]) {
         case "int":
             if (!preg_match("/^[-[:alpha:]\_$&%*][-[:alnum:]\_$&%*]*$/", $arg_parts[1]));
+                error(23, "PARSER ERROR: wrong in value");
             break;
         case "string":
             if($arg_parts[1] != ""){
