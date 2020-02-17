@@ -15,13 +15,31 @@
     //path to XML differencing tool
     $jexamlxml = "/pub/courses/ipp/jexamxml/jexamxml.jar";
 
-
     checkArguments();
 
-    // Run parse.php
-    exec("php7.4 " . $parseScript . " < " . $src, $parseOut, $parseRC);
-    $parseOut = shell_exec("php7.4 " . $parseScript . " < " . $src);
+    $shortopts  = "";
+    $shortopts .= "h"; // short --help
 
+    $longopts  = array(
+        "directory:",      // Required value
+        "optional::",       // Optional value   --delete
+        "help", 
+    );
+
+    
+    $opts = getopt($shortopts, $longopts);
+    foreach (array_keys($opts) as $opt) switch ($opt) {
+        case 'directory':
+            $directory = $opts["directory"];
+    
+    }
+    $output ="";
+   // var_dump($options);
+    // Run parse.php
+      exec("php7.4 " . $parse_script . " < " . $directory, $parseOut, $parseRC);
+    print_r($parseOut);
+      echo $parseRC;
+   // $parseOut = shell_exec("php7.4 " . $parseScript . " < " . $src);
     function checkArguments(){
 
     }
