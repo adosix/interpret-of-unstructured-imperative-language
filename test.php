@@ -13,9 +13,7 @@
     //only interpret script will be tested
     $int_only = false;
     //path to XML differencing tool
-    $jexamlxml = "/pub/courses/ipp/jexamxml/jexamxml.jar";
-
-    checkArguments();
+    $jexamlxml = "../jexamxml/jexamxml.jar";
 
     $shortopts  = "";
     $shortopts .= "h"; // short --help
@@ -31,16 +29,22 @@
     foreach (array_keys($opts) as $opt) switch ($opt) {
         case 'directory':
             $directory = $opts["directory"];
-    
     }
-    $output ="";
-   // var_dump($options);
+    /*
+    if (!is_dir($directory)) {
+        fwrite(STDERR, "TEST SCRIPT ERROR: Tests directory (" . $directory . ") does not exist\r\n");
+        exit(11);
+    } */
+    
+    // var_dump($options);
     // Run parse.php
-      exec("php7.4 " . $parse_script . " < " . $directory, $parseOut, $parseRC);
-    print_r($parseOut);
+     // exec("php7.4 " . $parse_script . " < " . $directory . ".src" . " > temp.out" , $parseOut, $parseRC);
+     // echo $parseRC;
+
+     
+      echo "\r\n------------\r\n";
+      exec("java -jar " . $jexamlxml . " " . $directory. ".out" . " temp.out" , $parseOut, $parseRC);
+      //exec("rm temp.out");
       echo $parseRC;
    // $parseOut = shell_exec("php7.4 " . $parseScript . " < " . $src);
-    function checkArguments(){
-
-    }
 ?>
