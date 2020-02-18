@@ -115,8 +115,12 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
         $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);
         $arg = $doc->createElement("arg" . $argn, $arg_parts);
     } else if ($type == "type") {
-        $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);
-        $arg = $doc->createElement("arg" . $argn, $arg_parts);
+        if($parsed_line[$argn] == "int" || $parsed_line[$argn] == "string" ||$parsed_line[$argn] == "bool") //nemusi byt case sensitive  a potom previest na lowercase pismena
+       {
+            $arg = $doc->createElement("arg" . $argn, $arg_parts);
+       }     
+        else
+            error(23, "PARSER ERROR: Type can be only \"bool\",\"int\",\"string\" ");
     } else
         error(99, "PARSER ERROR: Internal error, type not recognized");
 
