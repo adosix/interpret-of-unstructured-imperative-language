@@ -36,15 +36,78 @@
         exit(11);
     } */
     
-    // var_dump($options);
     // Run parse.php
-     // exec("php7.4 " . $parse_script . " < " . $directory . ".src" . " > temp.out" , $parseOut, $parseRC);
-     // echo $parseRC;
+    exec("php7.4 " . $parse_script . " < " . $directory . ".src" . " > temp.out" , $parseOut, $parseRC);
 
-     
-      echo "\r\n------------\r\n";
-      exec("java -jar " . $jexamlxml . " " . $directory. ".out" . " temp.out" , $parseOut, $parseRC);
-      //exec("rm temp.out");
-      echo $parseRC;
-   // $parseOut = shell_exec("php7.4 " . $parseScript . " < " . $src);
+    // Run java comparator
+    exec("java -jar " . $jexamlxml . " " . $directory. ".out" . " temp.out" , $parseOut, $parseRC);
+/*    if($parseRC == 0){
+        echo("\r\ntest passed\r\n");
+    }
+    else{
+        echo("\r\ntest failed\r\n");
+    }*/
+    generatHTML();
+
+    function generatHTML(){
+
+
+        $doc = new DOMDocument('1.0');
+
+        $doc->formatOutput = true;
+        
+        $root = $doc->createElement('html');
+        $root = $doc->appendChild($root);
+        
+        $head = $doc->createElement('head');
+        $head = $root->appendChild($head);
+
+        $style = $doc->createElement("style", '
+        body {
+            font-family: "Arial", sans-serif;
+            color: #2c3e50;
+            background: #ecf0f1;
+        }
+        table, td {
+            border: 2px solid #2c3e50;
+        }
+        table {
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+        td {
+            padding-left: 50px;
+        }
+        ');
+        $head = $head->appendChild($style);
+        
+        $title = $doc->createElement('title');
+        $title = $head->appendChild($title);
+        
+        $text = $doc->createTextNode('This is the title');
+        $text = $title->appendChild($text);
+       
+        $body = $doc->createElement('body');
+        $body = $root->appendChild($body);
+        
+        $table = $doc->createElement('table');
+        $table = $body->appendChild($table);
+
+        //first row
+        $table_row = $doc->createElement('tr');
+        $table_row = $table->appendChild($table_row);
+
+        $table_row_el = $doc->createElement('th',"id");
+        $table_row_el = $table_row->appendChild($table_row_el);
+
+        $table_row_el = $doc->createElement('th',"test");
+        $table_row_el = $table_row->appendChild($table_row_el);
+
+        $table_row_el = $doc->createElement('th',"passed");
+        $table_row_el = $table_row->appendChild($table_row_el);
+        $doc->saveHTMLFile("php://stdout");
+
+       
+    }
 ?>
