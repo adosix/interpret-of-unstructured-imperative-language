@@ -5,7 +5,7 @@ checkArguments();
 
 //load first line
 if (!$line = fgets(STDIN))
-    error(11, "PARSER ERROR: No input");
+    error(21, "PARSER ERROR: Invalid header");
 
 //get rid of whitespace chars and comments
 $line = preg_replace("/#.*$/", "", $line);
@@ -121,11 +121,15 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
     } 
     else if ($type == "label") {
         $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);
-        $arg = $doc->createElement("arg" . $argn, $arg_parts);
+        $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
     } 
     else if ($type == "type") {
-        $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);
-        $arg = $doc->createElement("arg" . $argn, $arg_parts);
+        if($parsed_line[$argn] == "int" || $parsed_line[$argn] == "string" ||$parsed_line[$argn] == "bool") //nemusi byt case sensitive  a potom previest na lowercase pismena
+        {
+             $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
+        }     
+         else
+             error(23, "PARSER ERROR: Type can be only \"bool\",\"int\",\"string\" ");
     } 
     else
         error(99, "PARSER ERROR: Internal error, type not recognized");
@@ -170,8 +174,8 @@ function checkSyntaxVar($arg)
     }
     switch ($arg[0]) {
         case "int":
-            if (!preg_match("/^[-[:alpha:]\_$&%*][-[:alnum:]\_$&%*]*$/", $arg[1]));
-                error(23, "PARSER ERROR: wrong in value");
+            if (!preg_match('/^[-+]?\d+([Ee][+-]?\d+)?$/', $arg[1]))
+                error(23, "PARSER ERROR: wrong int value".$arg[1]);
             break;
         case "string":
             if($arg[1] != ""){
