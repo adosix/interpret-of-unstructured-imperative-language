@@ -357,7 +357,7 @@ function checkSyntaxI($parsed_line, $instruction, $doc)
             // EQ       ⟨var⟩symb 1 ⟩ ⟨symb 2 ⟩
         case "EQ":
             // AND      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
-        case "\AND":
+        case "AND":
             // OR       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "OR":
             // STRI2INT ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
