@@ -63,7 +63,18 @@
         $doc = new DOMDocument('1.0');
 
         $doc->formatOutput = true;
-        
+        $script =" 
+          function show(id) {
+            var x = document.getElementById(id);
+            if (x.style.display === \"none\") {
+              x.style.display = \"flex\";
+            } else {
+              x.style.display = \"none\";
+            }
+          } ";
+        $js = $doc->createElement(script,$script);
+        $js = $doc->appendChild($js);
+
         $root = $doc->createElement('html');
         $root = $doc->appendChild($root);
         
@@ -97,6 +108,11 @@
         }
         .failed{
             color: red;
+        }
+        .difference{
+            display: none;
+            width: 10vw;
+            margin:auto;
         }
         ');
         $head = $head->appendChild($style);
@@ -153,12 +169,15 @@
         $filename = end($filename);
 
         //echo "-------------------- " . $filename . " -------------------- \r\n";
-        
+        $difference_xml = "";
         // Run parse.php
         exec("php7.4 " . $parse_script . " < " . $file_src . " > temp.out" , $parseOut, $parseRC);
         if($parseRC == 0){
+
             // Run java comparator
-            exec("java -jar " . $jexamlxml . " " . $file_loc. ".out" . " temp.out" , $parseOut, $xmlRC);
+            //for merlin add as the last argument /pub/courses/ipp/jexamxml/options
+            $difference = "" ;
+            exec("java -jar " . $jexamlxml . " " . $file_loc. ".out " . " temp.out " . " difference.txt", $parseOut, $xmlRC);
             if($xmlRC == 0){
                 $result = "passed";
                 $details = "xml files are identical";
@@ -168,6 +187,7 @@
                 $result = "failed";
                 $details = "xml files are different";
                 $failed_counter = $failed_counter + 1;
+                $difference = trim(file_get_contents("temp.out"));
             }
         }
         else{
@@ -187,9 +207,16 @@
             
         }
 
-            
+        //set table row
+        //-------------------------------------
         $table_row = $doc->createElement('tr');
         $table_row = $table->appendChild($table_row);
+
+
+        $class_attribute = $doc->createAttribute("onClick");
+        $class_attribute->value = "show(".$id_counter.");";
+        $table_row->appendChild($class_attribute);
+        //-------------------------------------
 
         $table_row_el = $doc->createElement('th',$id_counter);
         $table_row_el = $table_row->appendChild($table_row_el);
@@ -205,6 +232,21 @@
 
         $table_row_el = $doc->createElement('th',$details);
         $table_row_el = $table_row->appendChild($table_row_el);
+
+
+        $table_row = $doc->createElement('tr');
+        $table_row = $table->appendChild($table_row);
+
+
+        $table_row_el = $doc->createElement('th',"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        $table_row_el = $table_row->appendChild($table_row_el);
+        $class_attribute = $doc->createAttribute("class");
+        $class_attribute->value = "difference";
+        $table_row_el->appendChild($class_attribute);
+
+        $class_attribute = $doc->createAttribute("id");
+        $class_attribute->value = $id_counter;
+        $table_row_el->appendChild($class_attribute);
 
 
         }
@@ -245,7 +287,8 @@
 
         $doc->saveHTMLFile("php://stdout");
 
-        exec("rm temp.out");
+        exec("rm temp.out difference.txt");
+        
     }
 
 function error($err_val, $err_msg)

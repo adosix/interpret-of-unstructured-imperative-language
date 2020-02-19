@@ -13,7 +13,8 @@ $line = preg_replace('/\s/', "", $line);
 
 //echo $line;
 //check first line
-if ($line != ".IPPcode20")
+$line = strtolower($line);
+if ($line != ".ippcode19")
     error(21, "PARSER ERROR: Invalid header");
 
 //counter for instructions
@@ -24,7 +25,7 @@ $xml_doc = createDoc();
 $program = $xml_doc->createElement("program");
 $xml_doc->appendChild($program);
 $lang = $xml_doc->createAttribute("language");
-$lang->value = substr($line, 1) ;
+$lang->value = substr(".IPPcode19", 1) ;
 $program->appendChild($lang);
 
 //parse input doc and create xml doc
