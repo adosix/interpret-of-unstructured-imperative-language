@@ -471,7 +471,7 @@ function checkArguments()
             break;
         default:      
     }
-    if(!(($loc ==0 || $comments == 0 || $labels == 0 || $jumps == 0) && ($stats != " ")) ){
+    if(($loc ==0 || $comments == 0 || $labels == 0 || $jumps == 0) && ($stats == " ")    ){
         error(10, "PARSER ERROR: to generate statistics, you have specify folder.");
     }
 }
