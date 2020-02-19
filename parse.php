@@ -5,7 +5,7 @@ checkArguments();
 
 //load first line
 if (!$line = fgets(STDIN))
-    error(11, "PARSER ERROR: No input");
+    error(21, "PARSER ERROR: Invalid header");
 
 //get rid of whitespace chars and comments
 $line = preg_replace("/#.*$/", "", $line);
@@ -24,7 +24,7 @@ $xml_doc = createDoc();
 $program = $xml_doc->createElement("program");
 $xml_doc->appendChild($program);
 $lang = $xml_doc->createAttribute("language");
-$lang->value = $line;
+$lang->value = substr($line, 1) ;
 $program->appendChild($lang);
 
 //parse input doc and create xml doc
@@ -105,25 +105,37 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
         
     if ($type == "var" || $type == "symb") {
         $type = "var";
-        $arg_parts =  checkSyntaxVar($parsed_line[$argn], "var");
+        $parsed_arg = explode('@', $parsed_line[$argn]);
+        $arg_parts =  checkSyntaxVar($parsed_arg, "var");
 
+        if($parsed_arg[0] == "LF" || $parsed_arg[0] == "GF" || $parsed_arg[0] == "TF"){
+            $parsed_arg[1] = $parsed_arg[0] . "@" . $parsed_arg[1];
+            $parsed_arg[0] = "var";
+        }
         //substitute special characters for escape sequences
-        $parsed_line[$argn] = htmlentities($parsed_line[$argn],ENT_QUOTES,'UTF-8');
+        $parsed_arg[1] = htmlentities($parsed_arg[1],ENT_QUOTES,'UTF-8');
 
-        $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
-    } else if ($type == "label") {
+        $arg = $doc->createElement("arg" . $argn, $parsed_arg[1]);
+
+        $type = $parsed_arg[0];
+    } 
+    else if ($type == "label") {
         $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);
-        $arg = $doc->createElement("arg" . $argn, $arg_parts);
-    } else if ($type == "type") {
+        $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
+    } 
+    else if ($type == "type") {
         if($parsed_line[$argn] == "int" || $parsed_line[$argn] == "string" ||$parsed_line[$argn] == "bool") //nemusi byt case sensitive  a potom previest na lowercase pismena
-       {
-            $arg = $doc->createElement("arg" . $argn, $arg_parts);
-       }     
-        else
-            error(23, "PARSER ERROR: Type can be only \"bool\",\"int\",\"string\" ");
-    } else
+        {
+             $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
+        }     
+         else
+             error(23, "PARSER ERROR: Type can be only \"bool\",\"int\",\"string\" ");
+    } 
+    else
         error(99, "PARSER ERROR: Internal error, type not recognized");
 
+
+    
     $instruction->appendChild($arg);
 
     $arg_attribute = $doc->createAttribute("type");
@@ -155,35 +167,35 @@ function checkSyntaxLabel($arg)
  */
 function checkSyntaxVar($arg)
 {
-    $arg_parts = explode("@", $arg, 2);
-    if (count($arg_parts) != 2) {
-        print($arg . " var");
+
+    if (count($arg) != 2) {
+        print($arg[1] . " var");
         error(23, "PARSER ERROR: \'@\' has to be present in argument \r\n" . $arg . " var");
     }
-    switch ($arg_parts[0]) {
+    switch ($arg[0]) {
         case "int":
-            if (!preg_match("/^[-[:alpha:]\_$&%*][-[:alnum:]\_$&%*]*$/", $arg_parts[1]));
-                error(23, "PARSER ERROR: wrong in value");
+            if (!preg_match('/^[-+]?\d+([Ee][+-]?\d+)?$/', $arg[1]))
+                error(23, "PARSER ERROR: wrong int value".$arg[1]);
             break;
         case "string":
-            if($arg_parts[1] != ""){
-                if (!preg_match('/^(\\\\[0-9]{3}|[^\\\\])*$/',  $arg_parts[1]))         //escape sequence can be only \\000 -\\999 or \\\\
+            if($arg[1] != ""){
+                if (!preg_match('/^(\\\\[0-9]{3}|[^\\\\])*$/',  $arg[1]))         //escape sequence can be only \\000 -\\999 or \\\\
                     error(23, "PARSER ERROR: string can have only escape sequences from \\000 to \\999 \r\n" . $arg . " var");
             }
             break;
         case "bool":
-            if ($arg_parts[1] != "true" && $arg_parts[1] != "false")
+            if ($arg[1] != "true" && $arg[1] != "false")
                 error(23, "PARSER ERROR: bool value can be only \"true\" or \"false\" \r\n" . $arg . " var");
             break;
         case "LF":
         case "GF":
         case "TF":
-            checkSyntaxLabel($arg_parts[1]);
+            checkSyntaxLabel($arg[1]);
             break;
         default:
-            error(23, "PARSER ERROR: Invalid type of argument \r\n" . $arg_parts[0] . " @ " . $arg_parts[1]);
+            error(23, "PARSER ERROR: Invalid type of argument \r\n" . $arg[0] . " @ " . $arg[1]);
     }
-    return $arg_parts;
+    return $arg;
 }
 
 /**
