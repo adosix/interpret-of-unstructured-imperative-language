@@ -14,7 +14,7 @@ $line = preg_replace('/\s/', "", $line);
 //echo $line;
 //check first line
 $line = strtolower($line);
-if ($line != ".ippcode19")
+if ($line != ".ippcode20")
     error(21, "PARSER ERROR: Invalid header");
 
 //counter for instructions
@@ -25,7 +25,7 @@ $xml_doc = createDoc();
 $program = $xml_doc->createElement("program");
 $xml_doc->appendChild($program);
 $lang = $xml_doc->createAttribute("language");
-$lang->value = substr(".IPPcode19", 1) ;
+$lang->value = substr(".IPPcode20", 1) ;
 $program->appendChild($lang);
 
 //parse input doc and create xml doc
@@ -35,8 +35,8 @@ while ($line = fgets(STDIN)) {
         $ins_doc = addInstructionSkeleton($xml_doc, $program, $order, $parsed_line);
         $xml_doc = $ins_doc[0];
         $instruction =$ins_doc[1]; 
-        $order =  $order + 1;
         $xml_doc = checkSyntaxI($parsed_line, $instruction, $xml_doc);
+        $order =  $order + 1;
     }
 }
 //get final document
@@ -62,7 +62,11 @@ function addInstructionSkeleton($doc, $program, $order, $parsed_line){
     $instruction->appendChild($order_write);
 
     $op_code = $doc->createAttribute("opcode");
-    $op_code->value = $parsed_line[0];
+    if(!array_key_exists(0, $parsed_line))
+    {
+        error(21, "PARSER ERROR: Opcode missing ");
+    }
+    $op_code->value = strtoupper($parsed_line[0]);
     $instruction->appendChild($op_code);
 
     $ret_vals = array($doc, $instruction);
@@ -74,10 +78,10 @@ function addInstructionSkeleton($doc, $program, $order, $parsed_line){
  */
 function parse($line)
 {    
-    $line = preg_replace("/#.*$/", "", $line);
-    $line = preg_replace("/\r|\n|\x1a/", "", $line);
+    $line = trim(preg_replace("/#.*$/", "", $line));
+    $line = preg_replace('/\s+/', ' ', $line);
     $parsed_line = explode(' ', $line);
-
+    $parsed_line = array_map('trim', $parsed_line); //applies trim to all elements of array
     $i = 0;     //to know on which element am I
     //deletes an elemet which contains nothing a = ""
     foreach ($parsed_line as $word) {
@@ -104,10 +108,12 @@ function parse($line)
 function addArg($doc, $instruction, $type, $parsed_line, $argn)
 {
         
-    if ($type == "var" || $type == "symb") {
+    if ( $type == "symb") {
         $type = "var";
-        $parsed_arg = explode('@', $parsed_line[$argn]);
-        $arg_parts =  checkSyntaxVar($parsed_arg, "var");
+
+        //fputs(STDERR, "$parsed_line[0]\n");
+        $parsed_arg = explode('@', $parsed_line[$argn], 2);
+        checkSyntaxVar($parsed_arg, "var");
 
         if($parsed_arg[0] == "LF" || $parsed_arg[0] == "GF" || $parsed_arg[0] == "TF"){
             $parsed_arg[1] = $parsed_arg[0] . "@" . $parsed_arg[1];
@@ -120,17 +126,34 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
 
         $type = $parsed_arg[0];
     } 
+    else if ( $type == "var"){
+        $parsed_arg = explode('@', $parsed_line[$argn], 2);
+        checkSyntaxVar($parsed_arg, "var");
+        if($parsed_arg[0] == "LF" || $parsed_arg[0] == "GF" || $parsed_arg[0] == "TF"){
+            $parsed_arg[1] = $parsed_arg[0] . "@" . $parsed_arg[1];
+            $parsed_arg[0] = "var";
+        }
+        else{
+            error(23, "PARSER ERROR: Variable has to start with frame (LF/GF/TF) ");
+        }
+        $parsed_arg[1] = htmlentities($parsed_arg[1],ENT_QUOTES,'UTF-8');
+
+        $arg = $doc->createElement("arg" . $argn, $parsed_arg[1]);
+
+        $type = $parsed_arg[0];
+    }
     else if ($type == "label") {
-        $arg_parts =  checkSyntaxLabel($parsed_line[$argn]);
+        checkSyntaxLabel($parsed_line[$argn]);
         $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
     } 
     else if ($type == "type") {
         if($parsed_line[$argn] == "int" || $parsed_line[$argn] == "string" ||$parsed_line[$argn] == "bool") //nemusi byt case sensitive  a potom previest na lowercase pismena
         {
              $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
-        }     
-         else
+        }
+        else{
              error(23, "PARSER ERROR: Type can be only \"bool\",\"int\",\"string\" ");
+        }
     } 
     else
         error(99, "PARSER ERROR: Internal error, type not recognized");
@@ -152,8 +175,8 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
  * @param $arg = it's label/second part of var which is going to be checked in this function
  */
 function checkSyntaxLabel($arg)
-{
-    if (!preg_match("/^[[:alpha:]_\-$&%*][[:alnum:]_\-$&%*]*$/", $arg))
+{  
+    if (!preg_match("/^[[:alpha:]_\-$&%!?*][[:alnum:]_\-$&%!?*]*$/", $arg))
         error(23, "PARSER ERROR: Invalid characters in argument \r\n" . $arg . " var / label");
     return $arg;
 }
@@ -168,25 +191,27 @@ function checkSyntaxLabel($arg)
  */
 function checkSyntaxVar($arg)
 {
-
     if (count($arg) != 2) {
-        print($arg[1] . " var");
-        error(23, "PARSER ERROR: \'@\' has to be present in argument \r\n" . $arg . " var");
+        error(23, "PARSER ERROR: '@' has to be present once in argument: " . $arg[0] . "but it's: ".  count($arg) . " time(s).");
     }
     switch ($arg[0]) {
         case "int":
             if (!preg_match('/^[-+]?\d+([Ee][+-]?\d+)?$/', $arg[1]))
                 error(23, "PARSER ERROR: wrong int value".$arg[1]);
             break;
+        case "nil":
+            if (strcmp("nil", $arg[1]))
+                error(23, "PARSER ERROR: can be only nil@nil but was found nil@".$arg[1]);
+            break;
         case "string":
             if($arg[1] != ""){
                 if (!preg_match('/^(\\\\[0-9]{3}|[^\\\\])*$/',  $arg[1]))         //escape sequence can be only \\000 -\\999 or \\\\
-                    error(23, "PARSER ERROR: string can have only escape sequences from \\000 to \\999 \r\n" . $arg . " var");
+                    error(23, "PARSER ERROR: string can have only escape sequences from \\000 to \\999 \r\n" . $arg[1] . " var");
             }
             break;
         case "bool":
             if ($arg[1] != "true" && $arg[1] != "false")
-                error(23, "PARSER ERROR: bool value can be only \"true\" or \"false\" \r\n" . $arg . " var");
+                error(23, "PARSER ERROR: bool value can be only \"true\" or \"false\" \r\n" . $arg[1] . " var");
             break;
         case "LF":
         case "GF":
@@ -356,7 +381,7 @@ function checkSyntaxI($parsed_line, $instruction, $doc)
             $doc = addArg($doc, $instruction, 'symb', $parsed_line, 3);
             break;
         default:
-            error(21, "PARSER ERROR: Invalid opcode \"" . $parsed_line[0] . "\" ");
+            error(22, "PARSER ERROR: Invalid opcode \"" . $parsed_line[0] . "\" ");
     }
     return $doc;
 }

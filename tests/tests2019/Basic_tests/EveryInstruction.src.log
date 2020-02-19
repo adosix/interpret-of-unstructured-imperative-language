@@ -1,5 +1,5 @@
-[Fatal Error] wrong_arg_type1.out:1:1:Premature end of file.
-org.xml.sax.SAXParseException; systemId: file:///media/adosi/P/4_semester/IPP/projekt/interpret-of-unstructured-imperative-language/tests/tests2019/should-fail/wrong_arg_type1.out; lineNumber: 1; columnNumber: 1; Premature end of file.
+[Fatal Error] EveryInstruction.src:1:1:Content is not allowed in prolog.
+org.xml.sax.SAXParseException; systemId: file:///media/adosi/P/4_semester/IPP/projekt/interpret-of-unstructured-imperative-language/tests/tests2019/Basic_tests/EveryInstruction.src; lineNumber: 1; columnNumber: 1; Content is not allowed in prolog.
 	at java.xml/com.sun.org.apache.xerces.internal.parsers.AbstractSAXParser.parse(AbstractSAXParser.java:1243)
 	at java.xml/com.sun.org.apache.xerces.internal.jaxp.SAXParserImpl$JAXPSAXParser.parse(SAXParserImpl.java:635)
 	at com.a7soft.examxml.ExamXMLHandler.loadXML(ExamXMLHandler.java:111)

@@ -67,12 +67,12 @@
           function show(id) {
             var x = document.getElementById(id);
             if (x.style.display === \"none\") {
-              x.style.display = \"flex\";
+              x.style.display = \"table-cell\";
             } else {
               x.style.display = \"none\";
             }
           } ";
-        $js = $doc->createElement(script,$script);
+        $js = $doc->createElement("script",$script);
         $js = $doc->appendChild($js);
 
         $root = $doc->createElement('html');
@@ -83,38 +83,11 @@
         
         $title = $doc->createElement('title');
         $title = $head->appendChild($title);
-        $text = $doc->createTextNode('This is the title');
+        $text = $doc->createTextNode('Test result');
         $text = $title->appendChild($text);
 
-        $style = $doc->createElement("style", '
-        body {
-            font-family: "Arial", sans-serif;
-            color: #2c3e50;
-            background: #ecf0f1;
-        }
-        table, td {
-            border: 2px solid #2c3e50;
-        }
-        table {
-            border-collapse: collapse;
-            margin-bottom: 15px;
-            width: 100%;
-        }
-        td {
-            padding-left: 50px;
-        }
-        .passed{
-            color: green;
-        }
-        .failed{
-            color: red;
-        }
-        .difference{
-            display: none;
-            width: 10vw;
-            margin:auto;
-        }
-        ');
+        $style = get_style();
+        $style = $doc->createElement("style", $style);
         $head = $head->appendChild($style);
 
         
@@ -129,6 +102,9 @@
         //first row
         $table_row = $doc->createElement('tr');
         $table_row = $table->appendChild($table_row);
+        $class_attribute = $doc->createAttribute("class");
+        $class_attribute->value ="first_row";
+        $table_row ->appendChild($class_attribute);
 
         $table_row_el = $doc->createElement('th',"id");
         $table_row_el = $table_row->appendChild($table_row_el);
@@ -170,6 +146,7 @@
 
         //echo "-------------------- " . $filename . " -------------------- \r\n";
         $difference_xml = "";
+        //fputs(STDERR, "$file_src\n");
         // Run parse.php
         exec("php7.4 " . $parse_script . " < " . $file_src . " > temp.out" , $parseOut, $parseRC);
         if($parseRC == 0){
@@ -238,15 +215,21 @@
         $table_row = $table->appendChild($table_row);
 
 
-        $table_row_el = $doc->createElement('th',"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        $table_row_el = $doc->createElement('th',$difference);
         $table_row_el = $table_row->appendChild($table_row_el);
         $class_attribute = $doc->createAttribute("class");
         $class_attribute->value = "difference";
         $table_row_el->appendChild($class_attribute);
 
-        $class_attribute = $doc->createAttribute("id");
-        $class_attribute->value = $id_counter;
+        $class_attribute = $doc->createAttribute("colspan");
+        $class_attribute->value = "4";
         $table_row_el->appendChild($class_attribute);
+        if($details == "xml files are different"){
+            $class_attribute = $doc->createAttribute("id");
+            $class_attribute->value = $id_counter;
+            $table_row_el->appendChild($class_attribute);
+        }
+
 
 
         }
@@ -258,7 +241,10 @@
         //first row
         $table_row = $doc->createElement('tr');
         $table_row = $table->appendChild($table_row);
-
+        $class_attribute = $doc->createAttribute("class");
+        $class_attribute->value ="first_row";
+        $table_row ->appendChild($class_attribute);
+        
         $table_row_el = $doc->createElement('th',"n of passed");
         $table_row_el = $table_row->appendChild($table_row_el);
 
@@ -286,14 +272,59 @@
         $table_row_el = $table_row->appendChild($table_row_el);
 
         $doc->saveHTMLFile("php://stdout");
-
         exec("rm temp.out difference.txt");
-        
     }
 
 function error($err_val, $err_msg)
 {
     fputs(STDERR, "$err_msg\n");
     exit($err_val);
+}
+
+function get_style()
+{
+ return '
+ body {
+     font-family: "Arial", sans-serif;
+     color: #26A102;
+     background: #333333;
+ }
+ table, td {
+     border: 2px solid #2c3e50;
+ }
+ table {
+     border-collapse: collapse;
+     margin-bottom: 15px;
+     width: 100%;
+ }
+ td {
+     padding-left: 50px;
+ }
+ .passed{
+     background-color: green;
+     color:white;
+ }
+ .failed{
+     background-color: #E33E33;
+     color:white;
+ }
+ .difference{
+     background-color: #676767;
+     color: black;
+     display: none;
+     margin:auto;
+     
+ }
+ table {
+    border: 4px solid black;
+  }
+ th, td{
+    border: 1px solid black;
+  }
+  .first_row{
+    font-size: 23px;
+    border: 4px solid black;
+  }
+ ';
 }
 ?>

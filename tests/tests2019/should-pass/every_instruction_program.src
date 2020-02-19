@@ -1,4 +1,4 @@
-.IPPcode19# anthuh
+.IPPcode20# anthuh
 
 defvar GF@a
 move GF@a string@\900atuh
@@ -48,7 +48,7 @@ jump label0
 write string@auhean
 label label0
 jumpifeq label1 bool@true bool@false
-jumpifneq label2 int@19 int@19
+jumpifneq label2 int@20 int@20
 write string@ntahu
 label label2
 exit int@0
