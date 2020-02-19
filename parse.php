@@ -1,5 +1,10 @@
 #!/usr/bin/env php
 <?php
+$stats = " ";
+$loc=-1;
+$comments=-1;
+$labels=-1;
+$jumps=-1;
 
 checkArguments();
 
@@ -234,7 +239,12 @@ function checkSyntaxVar($arg)
  * @param $doc = whole xml document (output of the program)
  */
 function checkSyntaxI($parsed_line, $instruction, $doc)
-{
+{   
+    global $loc;
+    global $stats;
+    if($stats != " "){
+        $loc=$loc+1;
+    }
     $parsed_line[0] = strtoupper($parsed_line[0]);
     $arg_count = count($parsed_line) - 1;
     $inv_n_params = "invalid number of parameter (" . $arg_count . ") of the function ";
@@ -347,7 +357,7 @@ function checkSyntaxI($parsed_line, $instruction, $doc)
             // EQ       ⟨var⟩symb 1 ⟩ ⟨symb 2 ⟩
         case "EQ":
             // AND      ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
-        case "AND":
+        case "\AND":
             // OR       ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
         case "OR":
             // STRI2INT ⟨var⟩⟨symb 1 ⟩ ⟨symb 2 ⟩
@@ -414,20 +424,56 @@ function SaveDocExit($doc)
  */
 function checkArguments()
 {
-    global $argc;
-    global $argv;
-    if ($argc == 1) {
-        return;
-    } 
-    else if ($argc == 2 && $argv[1] == "--help") {
-        echo "
-        Usage: php7.4 parse.php --help/[std-in] \n\r
+    global $stats;
+    global $loc;
+    global $comments;
+    global $labels;
+    global $jumps;
+
+    $shortopts  = "";
+    $shortopts .= "h"; // short --help
+
+    $longopts  = array(
+        "stats:",      // Required value
+        "loc", 
+        "comments", 
+        "labels",
+        "jumps", 
+    );
+
+    
+    $opts = getopt($shortopts, $longopts);
+    foreach (array_keys($opts) as $opt) switch ($opt) {
+        case 'stats':
+            $stats = $opts['stats'];
+            fputs(STDERR, "$stats\n");
+            break;
+        case 'loc':
+            $loc = 0;
+            break;
+        case 'comments':
+            $comments = 0;
+            break;
+        case 'labels':
+            $labels = 0;
+            break;
+        case 'jumps':
+            $jumps = 0;
+            break;
+        case 'h':
+        case 'help':
+            echo "
+            Usage: php7.4 parse.php --help/[std-in] \n\r
             --help  ->  prints help message and exits program. \n\r
             [std-in]->  is standard input which should be three-address code
-                        which will be processed and transformed into xml file \n\r";
-        exit(0);
-    } else
-        error(10, "PARSER ERROR: Wrong parameters of the script parse.php");
+            which will be processed and transformed into xml file \n\r";
+            exit(0);
+            break;
+        default:      
+    }
+    if(!(($loc ==0 || $comments == 0 || $labels == 0 || $jumps == 0) && ($stats != " ")) ){
+        error(10, "PARSER ERROR: to generate statistics, you have specify folder.");
+    }
 }
 
 /**
