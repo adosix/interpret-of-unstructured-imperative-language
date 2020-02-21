@@ -5,12 +5,18 @@ $loc=-1;
 $comments=-1;
 $labels=-1;
 $jumps=-1;
-
+$labels_arr =  (array) null; ;
 checkArguments();
 
 //load first line
 if (!$line = fgets(STDIN))
     error(21, "PARSER ERROR: Invalid header");
+
+if($comments != -1){
+    if (strpos($line, "#")) {
+        $comments = $comments +1;
+    }
+}
 
 //get rid of whitespace chars and comments
 $line = preg_replace("/#.*$/", "", $line);
@@ -35,6 +41,11 @@ $program->appendChild($lang);
 
 //parse input doc and create xml doc
 while ($line = fgets(STDIN)) {
+    if($comments != -1){
+        if (strpos($line, "#")!== false) {
+            $comments = $comments +1;
+        }
+    }
     $parsed_line = parse($line);
     if ($parsed_line != 1) {
         $ins_doc = addInstructionSkeleton($xml_doc, $program, $order, $parsed_line);
@@ -44,13 +55,47 @@ while ($line = fgets(STDIN)) {
         $order =  $order + 1;
     }
 }
+//create stat file
+if($stats != " "){
+    CreateStatFile();
+}
 //get final document
 SaveDocExit($xml_doc);
+
 
 //------------------------------------------------------
 //---------------------FUNCTIONS------------------------
 //------------------------------------------------------
 
+function CreateStatFile(){
+    global $stats;
+    global $loc;
+    global $comments;
+    global $labels;
+    global $jumps;
+    global $argv;
+    $n_of_args = count($argv) -1;
+    if (($stats != " ") && ($statsFile = fopen($stats, "w")) == false){
+        error(12, "PARSER ERROR: file: " . $stats . " couldn't be opened.");
+    }
+    for($i = 1; $i <= $n_of_args; $i=$i+1){
+        if($argv[$i] == "--loc"){
+            fwrite($statsFile, $loc . "\n");
+            echo "sss";
+        }
+        if($argv[$i] == "--comments"){
+            fwrite($statsFile, $comments . "\n");
+        }
+        if($argv[$i] == "--labels"){
+            fwrite($statsFile, $labels . "\n");
+        }
+        if($argv[$i] == "--jumps"){
+            fwrite($statsFile, $jumps . "\n");
+        }
+    }
+    fclose($statsFile);
+
+}
 /**
  * brief:   Adds skeleton of instruction to xml (output file)
  * @param $doc = xml document (output of the program)
@@ -148,6 +193,13 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
         $type = $parsed_arg[0];
     }
     else if ($type == "label") {
+        global $labels;
+        global $labels_arr;
+        if($labels != -1 && !(in_array($parsed_line[$argn], $labels_arr))){
+            $new_label = $parsed_line[$argn];
+            array_push($labels_arr, $new_label );
+            $labels =$labels+1;
+        }
         checkSyntaxLabel($parsed_line[$argn]);
         $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
     } 
@@ -242,12 +294,21 @@ function checkSyntaxI($parsed_line, $instruction, $doc)
 {   
     global $loc;
     global $stats;
-    if($stats != " "){
+    if($loc != -1){
         $loc=$loc+1;
     }
     $parsed_line[0] = strtoupper($parsed_line[0]);
     $arg_count = count($parsed_line) - 1;
     $inv_n_params = "invalid number of parameter (" . $arg_count . ") of the function ";
+    if( (strcmp($parsed_line[0],"JUMP") == 0)       ||
+        (strcmp($parsed_line[0],"JUMPIFNEQ") == 0)  ||
+        (strcmp($parsed_line[0],"JUMPIFEQ") == 0)   ||
+        (strcmp($parsed_line[0],"RETURN") == 0)     ||
+        (strcmp($parsed_line[0],"CALL") == 0)
+    ){
+        statsAddJump();
+    }
+
     switch ($parsed_line[0]) {
             //---------------------------------------------------
             //-----------------param(s) :       -----------------
@@ -306,7 +367,7 @@ function checkSyntaxI($parsed_line, $instruction, $doc)
             if ($arg_count != 1) {
                 error(23, "$inv_n_params");
             }
-            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 1);
+           //comment for testing            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 1);
             break;
             //---------------------------------------------------
             //-----------------param(s) : var, type--------------
@@ -446,7 +507,6 @@ function checkArguments()
     foreach (array_keys($opts) as $opt) switch ($opt) {
         case 'stats':
             $stats = $opts['stats'];
-            fputs(STDERR, "$stats\n");
             break;
         case 'loc':
             $loc = 0;
@@ -473,6 +533,13 @@ function checkArguments()
     }
     if(($loc ==0 || $comments == 0 || $labels == 0 || $jumps == 0) && ($stats == " ")    ){
         error(10, "PARSER ERROR: to generate statistics, you have specify folder.");
+    }
+}
+
+function statsAddJump(){
+    global $jumps;
+    if($jumps != -1){
+        $jumps = $jumps + 1;
     }
 }
 
