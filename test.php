@@ -5,7 +5,7 @@
         //path to interpret script default
         $int_script = "interpret.php";
         //path to tests default
-        $directory = "";
+        $directory = "./";
         //recursive search througth repositories
         $recursive = false;
         //only parser script will be tested
@@ -13,42 +13,22 @@
         //only interpret script will be tested
         $int_only = false;
         //path to XML differencing tool
-        $jexamlxml = "../jexamxml/jexamxml.jar";
+        $jexamxml = "/pub/courses/ipp/jexamxml/jexamxml.jar";
+
         $doc;
         $body;
+
+        checkArguments();
         
         //flags arguments
-        $recursive = -1;
-
+        //$recursive = -1;
         $previous = " ";
         $dir_pass = 0;
         $dir_fail = 0;
-
-        $shortopts  = "";
-        $shortopts .= "h"; // short --help
-
         $last_dir = "";
 
-        $longopts  = array(
-            "directory:",   
-            "parse-script:",   
-            "int-script:",
-            "jexamxml:",
-            "help", 
-            "recursive",
-            "parse-only",
-            "int-only",
-        );
-
         
-        $opts = getopt($shortopts, $longopts);
-        foreach (array_keys($opts) as $opt) switch ($opt) {
-            case 'directory':
-                $directory = $opts["directory"];
-                break;
-            case 'recursive':
-                $recursive = 0;
-        }
+
         
         if (!is_dir($directory)) {
             fwrite(STDERR, "TEST SCRIPT ERROR: Tests directory (" . $directory . ") does not exist\r\n");
@@ -59,8 +39,18 @@
         $files_out = test_files($directory, '/\.out$/');
         $files_rc = test_files($directory, '/\.rc$/');
 
-        generatHTML($parse_script, $files_src, $files_out,$files_rc, $jexamlxml);
+        generatHTML($parse_script, $files_src, $files_out,$files_rc);
 
+//------------------------------------------------------
+//---------------------FUNCTIONS------------------------
+//------------------------------------------------------
+
+        
+    /**
+    * brief:   Searches trought directories and returns array of files
+    * @param $dir -> directory from which script starts
+    * @param $filter -> filter which files will be added to array
+    */
         function test_files($dir, $filter = '', &$results = array()) {
             global $recursive ;
             $files = scandir($dir);
@@ -70,17 +60,31 @@
                 if(!is_dir($path)) {
                     if(empty($filter) || preg_match($filter, $path)) $results[] = $path;
                 }
-                else if($value != "." && $value != ".." && $recursive != -1) {
+                else if($value != "." && $value != ".." && $recursive == true) {
                     test_files($path, $filter, $results);
                 }
             }
-        
             return $results;
         }
-
-        function generatHTML($parse_script, $files_src, $files_out, $files_rc, $jexamlxml){
+        
+    /**
+    * brief:  Logic of the program and calling other functions
+    * @param $parse_script -> path to parse script
+    * @param $files_src -> source files
+    * @param $files_out -> files with three adress code
+    * @param $files_rc -> files with return codes
+    */
+        function generatHTML($parse_script, $files_src, $files_out, $files_rc){
             global $doc;
             global $body;
+
+            global $directory;
+            global $recursive;
+            global $parse_script;
+            global $int_script;
+            global $parse_only;
+            global $int_only;
+            global $jexamxml;
 
             $doc = new DOMDocument('1.0');
 
@@ -146,6 +150,8 @@
             $id_counter = 0;
             $passed_counter = 0;
             $failed_counter = 0;
+            global $dir_fail;
+            global $dir_pass;
             //tests each file
         foreach ($files_src as $file_src) {
             $id_counter = $id_counter+1;
@@ -168,19 +174,17 @@
             $filename = explode('/', $file_loc);
             $filename = end($filename);
 
-            //echo "-------------------- " . $filename . " -------------------- \r\n";
-            $difference_xml = "";
             //fputs(STDERR, "$file_src\n");
             // Run parse.php
-            global $dir_fail;
-            global $dir_pass;
-            exec("php7.4 " . $parse_script . " < " . $file_src . " > temp.out" , $parseOut, $parseRC);
-            if($parseRC == 0){
 
+            exec("php7.4 " . $parse_script . " < " . $file_src . " > temp.out" , $parseOut, $parseRC);
+            if($parseRC == 0 &&  $parse_only == true){
+                if (!file_exists($jexamxml)){ 
+                    error(11, "TEST ERROR: file jexamxml doesn't exist at path " . $jexamxml);
+                } 
                 // Run java comparator
-                //for merlin add as the last argument /pub/courses/ipp/jexamxml/options
                 $difference = "" ;
-                exec("java -jar " . $jexamlxml . " " . $file_loc. ".out " . " temp.out " . " difference.txt", $parseOut, $xmlRC);
+                exec("java -jar " . $jexamxml . " " . $file_loc. ".out " . " temp.out " . " difference.txt", $parseOut, $xmlRC);
                 if($xmlRC == 0){
                     $dir_pass = $dir_pass + 1;
                     $last_flag =1;
@@ -196,6 +200,11 @@
                     $failed_counter = $failed_counter + 1;
                     $difference = trim(file_get_contents("temp.out"));
                 }
+            }
+            else if ($parse_only == false && $parseRC == 0 ){
+                exit(0);
+                exec("python3.8 " . $int_script . " < " . "temp.out" . " > temp.out" , $intOut, $intRC);
+                
             }
             else{
 
@@ -267,9 +276,14 @@
                 $previous = $table_row_el;
             }
             $last_flag = 0;
-            generateTestRow($table, $id_counter, $filename,$result,$details,$difference);
+            if($parse_only == true || $parseRC != 0){
+                if($parse_only != true){
+                    $difference = "";
+                }
+                generateTestRow($table, $id_counter, $filename,$result,$details,$difference);
             }
-            //last partial table 
+            
+            }
             generateTableStat($dir_fail,$dir_pass) ;
 
             $table = $doc->createElement('h1', "Overall statistics");
@@ -279,15 +293,27 @@
             
 
             $doc->saveHTMLFile("php://stdout");
-            exec("rm temp.out difference.txt");
+            if (file_exists("temp.out")){ 
+                exec("rm temp.out");
+            }            
+            if (file_exists("difference.txt")){ 
+                exec("rm difference.txt");
+            } 
+           
         }
-
+/**
+    * brief:   prints error and returns error code
+    * @param $err_val -> error code
+    * @param $err_msgr -> error message
+    */
     function error($err_val, $err_msg)
     {
         fputs(STDERR, "$err_msg\n");
         exit($err_val);
     }
-
+    /**
+    * brief:   Returns string with style (css)
+    */
     function get_style()
     {
     return '
@@ -363,12 +389,20 @@
         border: 1px solid black;
     }
     .first_row{
-        font-size: 23px;
+        
+        background-color: grey;
+        font-size: 25px;
+        color: #01311E;
         border: 4px solid black;
     }
     ';
     }
-
+    /**
+    * brief:   Adds table with results to our html document
+    * @param $doc -> html document (output of the program)
+    * @param $n_failed -> number of tests that passed
+    * @param $n_passed -> number of tests that passed
+    */
     function generateTableStat($n_failed, $n_passed){
         global $doc;
         global $body;
@@ -402,13 +436,29 @@
         
         $table_row_el = $doc->createElement('th',"$n_failed");
         $table_row_el = $table_row->appendChild($table_row_el);
-        $passed_percentage = $n_passed/ (($n_passed +$n_failed)/100) ;
+        if($n_failed == 0 && $n_passed == 0){
+            $passed_percentage = 0;
+            $failed_percentage = 0;
+        }
+        else{
+            $passed_percentage = $n_passed/ (($n_passed +$n_failed)/100) ;
+            $failed_percentage = $n_failed/ (($n_passed +$n_failed)/100);
+        }
+        
         $table_row_el = $doc->createElement('th',$passed_percentage." %");
         $table_row_el = $table_row->appendChild($table_row_el);
-        $failed_percentage = $n_failed/ (($n_passed +$n_failed)/100);
+        
         $table_row_el = $doc->createElement('th',$failed_percentage ." %");
         $table_row_el = $table_row->appendChild($table_row_el);
     }
+        /**
+    * brief:   Adds table row to our html document
+    * @param $table -> to which table we are going to add row
+    * @param $id_counter -> number of test
+    * @param $result -> if the test was succesfull or not
+    * @param $details -> more detailed output of the test
+    * @param $difference -> difference between xml files
+    */
     function generateTestRow($table, $id_counter, $filename,$result,$details,$difference){
         global $doc;
         global $body;
@@ -463,6 +513,9 @@
             $table_row_el->appendChild($class_attribute);
         }
     }
+    /**
+    * brief:   return string with javascript
+    */
     function returnScript(){
         return " 
             function show(id) {
@@ -473,6 +526,65 @@
                 x.style.display = \"none\";
                 }
             } ";
+    }
+    /**
+    * brief:  Checks arguments of the program
+    */
+    function checkArguments(){
+        global $directory;
+        global $recursive;
+        global $parse_script;
+        global $int_script;
+        global $parse_only;
+        global $int_only;
+        global $jexamxml;
+        $shortopts  = "";
+        $shortopts .= "h"; // short --help
+
+        $longopts  = array(
+            "directory:",   
+            "parse-script:",   
+            "int-script:",
+            "jexamxml:",
+            "help", 
+            "recursive",
+            "parse-only",
+            "int-only",
+        );
+        $opts = getopt($shortopts, $longopts);
+        foreach (array_keys($opts) as $opt){ 
+            switch ($opt) {
+                case 'directory':
+                    $directory = $opts['directory'];
+                    break;
+                case 'recursive':
+                    $recursive = true;
+                    break;
+                case 'jexamxml':
+                    $jexamxml = $opts['jexamxml'];
+                    break;
+                case 'parse-only':
+                    $parse_only = true;
+                    break;
+                case 'parse-script':
+                    $parse_script = $opts['parse-script'];
+                    break;
+                case 'int-script':
+                    $int_script = $opts['int-script'];
+                    break;
+
+                case 'int-only':
+                    $int_only = true;
+                    break;
+                case 'h':
+                case 'help':
+                    echo "help todo";
+                    exit(0);
+
+                default:
+            }
+        }
+
     }
     ?>
     

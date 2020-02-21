@@ -81,7 +81,6 @@ function CreateStatFile(){
     for($i = 1; $i <= $n_of_args; $i=$i+1){
         if($argv[$i] == "--loc"){
             fwrite($statsFile, $loc . "\n");
-            echo "sss";
         }
         if($argv[$i] == "--comments"){
             fwrite($statsFile, $comments . "\n");
@@ -234,7 +233,7 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
 function checkSyntaxLabel($arg)
 {  
     if (!preg_match("/^[[:alpha:]_\-$&%!?*][[:alnum:]_\-$&%!?*]*$/", $arg))
-        error(23, "PARSER ERROR: Invalid characters in argument \r\n" . $arg . " var / label");
+        error(23, "PARSER ERROR: Invalid characters in argument " . $arg . " var / label");
     return $arg;
 }
 
@@ -263,12 +262,12 @@ function checkSyntaxVar($arg)
         case "string":
             if($arg[1] != ""){
                 if (!preg_match('/^(\\\\[0-9]{3}|[^\\\\])*$/',  $arg[1]))         //escape sequence can be only \\000 -\\999 or \\\\
-                    error(23, "PARSER ERROR: string can have only escape sequences from \\000 to \\999 \r\n" . $arg[1] . " var");
+                    error(23, "PARSER ERROR: string can have only escape sequences from \\000 to \\999 " . $arg[1] . " var");
             }
             break;
         case "bool":
             if ($arg[1] != "true" && $arg[1] != "false")
-                error(23, "PARSER ERROR: bool value can be only \"true\" or \"false\" \r\n" . $arg[1] . " var");
+                error(23, "PARSER ERROR: bool value can be only \"true\" or \"false\" " . $arg[1] . " var");
             break;
         case "LF":
         case "GF":
@@ -276,7 +275,7 @@ function checkSyntaxVar($arg)
             checkSyntaxLabel($arg[1]);
             break;
         default:
-            error(23, "PARSER ERROR: Invalid type of argument \r\n" . $arg[0] . " @ " . $arg[1]);
+            error(23, "PARSER ERROR: Invalid type of argument " . $arg[0] . " @ " . $arg[1]);
     }
     return $arg;
 }
@@ -299,7 +298,7 @@ function checkSyntaxI($parsed_line, $instruction, $doc)
     }
     $parsed_line[0] = strtoupper($parsed_line[0]);
     $arg_count = count($parsed_line) - 1;
-    $inv_n_params = "invalid number of parameter (" . $arg_count . ") of the function ";
+    $inv_n_params = "PARSER ERROR: invalid number of parameter (" . $arg_count . ") of the function ";
     if( (strcmp($parsed_line[0],"JUMP") == 0)       ||
         (strcmp($parsed_line[0],"JUMPIFNEQ") == 0)  ||
         (strcmp($parsed_line[0],"JUMPIFEQ") == 0)   ||
@@ -367,7 +366,7 @@ function checkSyntaxI($parsed_line, $instruction, $doc)
             if ($arg_count != 1) {
                 error(23, "$inv_n_params");
             }
-           //comment for testing            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 1);
+            $doc = addArg($doc, $instruction, 'symb', $parsed_line, 1);
             break;
             //---------------------------------------------------
             //-----------------param(s) : var, type--------------
@@ -500,9 +499,9 @@ function checkArguments()
         "comments", 
         "labels",
         "jumps", 
+        "help",
     );
 
-    
     $opts = getopt($shortopts, $longopts);
     foreach (array_keys($opts) as $opt) switch ($opt) {
         case 'stats':
@@ -523,13 +522,22 @@ function checkArguments()
         case 'h':
         case 'help':
             echo "
+            reads source file .src and generate html file .out according rules of unstructured imperative language IPP20 \r\n
             Usage: php7.4 parse.php --help/[std-in] \n\r
             --help  ->  prints help message and exits program. \n\r
-            [std-in]->  is standard input which should be three-address code
-            which will be processed and transformed into xml file \n\r";
+            [std-in]->  is standard input, which should be three-address code
+            which will be processed and transformed into xml file \n\r
+            statistics of the code can be printed in the file:  \n\r
+            --stats=filename -> filename is name of file where statistics will be printed \n\r
+            --loc -> prints number of instructions  \n\r
+            --comments -> prints number of comments \n\r
+            --labels -> prints number of uniqe labels  \n\r
+            --jumps -> number of jumps \n\r
+            ";
             exit(0);
             break;
         default:      
+            error(10, "PARSER ERROR: unknown argument");
     }
     if(($loc ==0 || $comments == 0 || $labels == 0 || $jumps == 0) && ($stats == " ")    ){
         error(10, "PARSER ERROR: to generate statistics, you have specify folder.");
