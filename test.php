@@ -1,12 +1,12 @@
 
     <?php
         //path to parse script default
-        $parse_script = "parse.php";
+        $parse_script = "./parse.php";
         //path to interpret script default
-        $int_script = "interpret.php";
+        $int_script = "./interpret.php";
         //path to tests default
         $directory = "./";
-        //recursive search througth repositories
+        //recursive search throught repositories
         $recursive = false;
         //only parser script will be tested
         $parse_only = false;
@@ -19,6 +19,10 @@
         $body;
 
         checkArguments();
+
+        if (!file_exists($parse_script)){ 
+            error(11,"TEST ERROR:parse script doesn't exists at path " . $parse_script);
+        }  
         
         //flags arguments
         //$recursive = -1;
@@ -176,14 +180,13 @@
 
             //fputs(STDERR, "$file_src\n");
             // Run parse.php
-
+            $difference = "" ;
             exec("php7.4 " . $parse_script . " < " . $file_src . " > temp.out" , $parseOut, $parseRC);
             if($parseRC == 0 &&  $parse_only == true){
                 if (!file_exists($jexamxml)){ 
                     error(11, "TEST ERROR: file jexamxml doesn't exist at path " . $jexamxml);
                 } 
                 // Run java comparator
-                $difference = "" ;
                 exec("java -jar " . $jexamxml . " " . $file_loc. ".out " . " temp.out " . " difference.txt", $parseOut, $xmlRC);
                 if($xmlRC == 0){
                     $dir_pass = $dir_pass + 1;
@@ -202,6 +205,9 @@
                 }
             }
             else if ($parse_only == false && $parseRC == 0 ){
+                if (!file_exists($int_script)){ 
+                    error(11,"TEST ERROR:interpret script doesn't exists at path " . $int_script);
+                }  
                 exit(0);
                 exec("python3.8 " . $int_script . " < " . "temp.out" . " > temp.out" , $intOut, $intRC);
                 
@@ -556,6 +562,12 @@
             switch ($opt) {
                 case 'directory':
                     $directory = $opts['directory'];
+                    if(substr($directory, -1) != "/"){
+                        $directory = $directory ."/";
+                    }
+                    if($directory[0] != '/'){
+                        $directory = "./" . $directory;
+                    }
                     break;
                 case 'recursive':
                     $recursive = true;
