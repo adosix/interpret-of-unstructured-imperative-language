@@ -3,7 +3,7 @@
         //path to parse script default
         $parse_script = "./parse.php";
         //path to interpret script default
-        $int_script = "./interpret.php";
+        $int_script = "./interpret.py";
         //path to tests default
         $directory = "./";
         //recursive search throught repositories
@@ -181,57 +181,92 @@
             //fputs(STDERR, "$file_src\n");
             // Run parse.php
             $difference = "" ;
-            exec("php7.4 " . $parse_script . " < " . $file_src . " > temp.out" , $parseOut, $parseRC);
-            if($parseRC == 0 &&  $parse_only == true){
-                if (!file_exists($jexamxml)){ 
-                    error(11, "TEST ERROR: file jexamxml doesn't exist at path " . $jexamxml);
-                } 
-                // Run java comparator
-                exec("java -jar " . $jexamxml . " " . $file_loc. ".out " . " temp.out " . " difference.txt", $parseOut, $xmlRC);
-                if($xmlRC == 0){
-                    $dir_pass = $dir_pass + 1;
-                    $last_flag =1;
-                    $result = "passed";
-                    $details = "xml files are identical";
-                    $passed_counter = $passed_counter + 1;
+            
+            //test just interpret
+            if($int_only == true){
+                $result = "doplnit";
+                $details= "doplnit";
+                exec("python3.6 " . $int_script . " --source=" . $files_src  , $int_out, $int_rc,);
+                if($int_rc ==0){
+                 $result = "todo if rc 0";
+                 $details = "kde";
                 }
                 else{
-                    $dir_fail = $dir_fail + 1;
-                    $last_flag=-1;
-                    $result = "failed";
-                    $details = "xml files are different";
-                    $failed_counter = $failed_counter + 1;
-                    $difference = trim(file_get_contents("temp.out"));
+                    $number = trim(file_get_contents($file_loc. ".rc"));
+                    if($number == $int_rc){
+                        $dir_pass = $dir_pass + 1;
+                        $last_flag=1;
+                        $result = "passed";
+                        $details = "rc is: " .$int_rc ;
+                        $passed_counter = $passed_counter + 1;
+                    }
+                    else{
+                        $dir_fail = $dir_fail + 1;
+                        $last_flag=-1;
+                        $result = "failed ";
+                        $details = "rc should be: " . $number ."\r\n".
+                                "rc is: " .$int_rc;
+                        $failed_counter = $failed_counter + 1;
+                    }
                 }
-            }
-            else if ($parse_only == false && $parseRC == 0 ){
-                if (!file_exists($int_script)){ 
-                    error(11,"TEST ERROR:interpret script doesn't exists at path " . $int_script);
-                }  
-                exit(0);
-                exec("python3.8 " . $int_script . " < " . "temp.out" . " > temp.out" , $intOut, $intRC);
-                
-            }
-            else{
 
-                $number = trim(file_get_contents($file_loc. ".rc"));
-                if($number == $parseRC){
-                    $dir_pass = $dir_pass + 1;
-                    $last_flag=1;
-                    $result = "passed";
-                    $details = "rc is: " .$parseRC ;
-                    $passed_counter = $passed_counter + 1;
+    
+            }
+            //test both or just interpret
+            else{
+                exec("php7.4 " . $parse_script . " < " . $file_src . " > temp.out" , $parseOut, $parseRC);
+                if($parseRC == 0 &&  $int_only == false){
+                    if (!file_exists($jexamxml)){ 
+                        error(11, "TEST ERROR: file jexamxml doesn't exist at path " . $jexamxml);
+                    } 
+                    // Run java comparator
+                    exec("java -jar " . $jexamxml . " " . $file_loc. ".out " . " temp.out " . " difference.txt", $parseOut, $xmlRC);
+                    if($xmlRC == 0){
+                        $dir_pass = $dir_pass + 1;
+                        $last_flag =1;
+                        $result = "passed";
+                        $details = "xml files are identical";
+                        $passed_counter = $passed_counter + 1;
+                        //test both otherwise only parse wil be checked
+                        if($parse_only== false){
+                            if (!file_exists($int_script)){ 
+                                error(11,"TEST ERROR:interpret script doesn't exists at path " . $int_script);
+                            } 
+                            exec("python3.8 " . $int_script . " < " . "temp.out" . " > temp.out" , $intOut, $intRC);
+                        }
+
+                    }
+                    else{
+                        $dir_fail = $dir_fail + 1;
+                        $last_flag=-1;
+                        $result = "failed";
+                        $details = "xml files are different";
+                        $failed_counter = $failed_counter + 1;
+                        $difference = trim(file_get_contents("temp.out"));
+                    }
                 }
                 else{
-                    $dir_fail = $dir_fail + 1;
-                    $last_flag=-1;
-                    $result = "failed ";
-                    $details = "rc should be: " . $number ."\r\n".
-                            "rc is: " .$parseRC;
-                    $failed_counter = $failed_counter + 1;
+    
+                    $number = trim(file_get_contents($file_loc. ".rc"));
+                    if($number == $parseRC){
+                        $dir_pass = $dir_pass + 1;
+                        $last_flag=1;
+                        $result = "passed";
+                        $details = "rc is: " .$parseRC ;
+                        $passed_counter = $passed_counter + 1;
+                    }
+                    else{
+                        $dir_fail = $dir_fail + 1;
+                        $last_flag=-1;
+                        $result = "failed ";
+                        $details = "rc should be: " . $number ."\r\n".
+                                "rc is: " .$parseRC;
+                        $failed_counter = $failed_counter + 1;
+                    }
+                    
                 }
-                
             }
+
             $file_loc = explode('/', $file_loc);
             $position = count($file_loc) - 2;
             global $last_dir;
