@@ -625,7 +625,17 @@
                     break;
                 case 'h':
                 case 'help':
-                    echo "help todo";
+                    echo "
+                    Test script for scripts parse.php and interpret.py  \r\n
+                    Usage: php7.4 test.php --help/options \n\r
+                    --help           -> prints help message and exits program. \n\r
+                    --directory=     -> path to directory in which are the tests dedault: ./\n\r
+                    --parse-script=  -> path to parse script, default ./parse.php\n\r
+                    --int-script=    -> path to interpret script, default ./interpret.py\n\r
+                    --jexamxml=      -> path to jexamxml.jar, default /pub/courses/ipp/jexamxml/jexamxml.jar\r\n
+                    --parse-only     -> test just parse script\n\r
+                    --int-only       -> test just interpret script\n\r
+                    ";
                     exit(0);
 
                 default:
@@ -633,5 +643,4 @@
         }
 
     }
-    ?>
     

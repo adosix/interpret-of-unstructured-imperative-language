@@ -39,6 +39,7 @@ $lang = $xml_doc->createAttribute("language");
 $lang->value = substr(".IPPcode20", 1) ;
 $program->appendChild($lang);
 
+
 //parse input doc and create xml doc
 while ($line = fgets(STDIN)) {
     if($comments != -1){
@@ -156,10 +157,10 @@ function parse($line)
  */
 function addArg($doc, $instruction, $type, $parsed_line, $argn)
 {
-        
+    
     if ( $type == "symb") {
         $type = "var";
-
+        
         //fputs(STDERR, "$parsed_line[0]\n");
         $parsed_arg = explode('@', $parsed_line[$argn], 2);
         checkSyntaxVar($parsed_arg, "var");
@@ -169,13 +170,14 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
             $parsed_arg[0] = "var";
         }
         //substitute special characters for escape sequences
-        $parsed_arg[1] = htmlentities($parsed_arg[1],ENT_QUOTES,'UTF-8');
-
-        $arg = $doc->createElement("arg" . $argn, $parsed_arg[1]);
+        //$parsed_arg[1] = htmlentities($parsed_arg[1],ENT_QUOTES,'UTF-8');
+        
+        $arg = $doc->createElement("arg" . $argn, htmlspecialchars($parsed_arg[1]));
 
         $type = $parsed_arg[0];
     } 
     else if ( $type == "var"){
+        ;
         $parsed_arg = explode('@', $parsed_line[$argn], 2);
         checkSyntaxVar($parsed_arg, "var");
         if($parsed_arg[0] == "LF" || $parsed_arg[0] == "GF" || $parsed_arg[0] == "TF"){
@@ -204,7 +206,7 @@ function addArg($doc, $instruction, $type, $parsed_line, $argn)
     } 
     else if ($type == "type") {
         if($parsed_line[$argn] == "int" || $parsed_line[$argn] == "string" ||$parsed_line[$argn] == "bool") //nemusi byt case sensitive  a potom previest na lowercase pismena
-        {
+        {   
              $arg = $doc->createElement("arg" . $argn, $parsed_line[$argn]);
         }
         else{
@@ -248,7 +250,8 @@ function checkSyntaxLabel($arg)
 function checkSyntaxVar($arg)
 {
     if (count($arg) != 2) {
-        error(23, "PARSER ERROR: '@' has to be present once in argument: " . $arg[0] . "but it's: ".  count($arg) . " time(s).");
+        $n_of_at = count($arg) -1;
+        error(23, "PARSER ERROR: '@' has to be present once in argument: " . $arg[0] . "but it's: ".  $n_of_at . " time(s).");
     }
     switch ($arg[0]) {
         case "int":
@@ -460,7 +463,7 @@ function checkSyntaxI($parsed_line, $instruction, $doc)
  */
 function createDoc()
 {
-    $doc = new DomDocument("1.0", "UTF-8");
+    $doc = new DomDocument('1.0', 'UTF-8');
 
     $doc->formatOutput = true;
 
@@ -473,7 +476,8 @@ function createDoc()
  */
 function SaveDocExit($doc)
 {
-    $doc->save("php://stdout");
+    echo $doc->saveXML();
+    //$doc->save("php://stdout");
     exit(0);
 }
 
