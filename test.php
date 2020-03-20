@@ -183,39 +183,46 @@
             $difference = "" ;
             
             //test just interpret
-            if($int_only == true){
+            if($parse_only == false){
                 $result = "doplnit";
                 $details= "doplnit";
-                exec("python3.6 " . $int_script . " --source=" . $files_src  , $int_out, $int_rc,);
-                if($int_rc ==0){
-                 $result = "todo if rc 0";
-                 $details = "kde";
+                if($int_only== true){
+                    exec("python3.6 " . $int_script . " --source=" . $files_src  , $int_out, $int_rc,);
+                    if($int_rc ==0){
+                    $result = "todo if rc 0";
+                    $details = "kde";
+                }
+                
                 }
                 else{
-                    $number = trim(file_get_contents($file_loc. ".rc"));
-                    if($number == $int_rc){
-                        $dir_pass = $dir_pass + 1;
-                        $last_flag=1;
-                        $result = "passed";
-                        $details = "rc is: " .$int_rc ;
-                        $passed_counter = $passed_counter + 1;
-                    }
-                    else{
+                    if (!file_exists($int_script)){ 
+                            error(11,"TEST ERROR:interpret script doesn't exists at path " . $int_script);
+                    } 
+                    exec("php7.4 " . $parse_script . " < " . $file_src . " > tempo.out" , $parseOut, $parseRC);
+                    exec("python3.8 " . $int_script . " --source=tempo.out > tempos.out" , $intOut, $intRC);
+                    
+                    $diff=array();
+                    exec("diff tempos.out ".$file_loc. ".out ", $diff, $parserResult);
+                    if ($parserResult != 0)
+                    { 
                         $dir_fail = $dir_fail + 1;
                         $last_flag=-1;
-                        $result = "failed ";
-                        $details = "rc should be: " . $number ."\r\n".
-                                "rc is: " .$int_rc;
+                        $result = "failed";
+                        $details = "xml files are different";
                         $failed_counter = $failed_counter + 1;
                     }
+                    else{
+                        $dir_pass = $dir_pass + 1;
+                        $result = "passed";
+                        $details = "xml files are identical";
+                        $passed_counter = $passed_counter + 1;
+                    }
                 }
-
-    
             }
             //test both or just interpret
             else{
                 exec("php7.4 " . $parse_script . " < " . $file_src . " > temp.out" , $parseOut, $parseRC);
-                if($parseRC == 0 &&  $int_only == false){
+                if($parseRC == 0){
                     if (!file_exists($jexamxml)){ 
                         error(11, "TEST ERROR: file jexamxml doesn't exist at path " . $jexamxml);
                     } 
@@ -228,12 +235,6 @@
                         $details = "xml files are identical";
                         $passed_counter = $passed_counter + 1;
                         //test both otherwise only parse wil be checked
-                        if($parse_only== false){
-                            if (!file_exists($int_script)){ 
-                                error(11,"TEST ERROR:interpret script doesn't exists at path " . $int_script);
-                            } 
-                            exec("python3.8 " . $int_script . " < " . "temp.out" . " > temp.out" , $intOut, $intRC);
-                        }
 
                     }
                     else{
@@ -641,6 +642,4 @@
                 default:
             }
         }
-
     }
-    
