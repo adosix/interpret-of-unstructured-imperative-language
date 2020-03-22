@@ -182,10 +182,9 @@
             // Run parse.php
             $difference = "" ;
             
-            //test just interpret
             if($parse_only == false){
-                $result = "doplnit";
-                $details= "doplnit";
+                $result = "";
+                $details= "";
                 if($int_only== true){
                     exec("python3.6 " . $int_script . " --source=" . $files_src  , $int_out, $int_rc,);
                     if($int_rc ==0){
@@ -208,13 +207,13 @@
                         $dir_fail = $dir_fail + 1;
                         $last_flag=-1;
                         $result = "failed";
-                        $details = "xml files are different";
+                        $details = "output files different";
                         $failed_counter = $failed_counter + 1;
                     }
                     else{
                         $dir_pass = $dir_pass + 1;
                         $result = "passed";
-                        $details = "xml files are identical";
+                        $details = "output files are identical";
                         $passed_counter = $passed_counter + 1;
                     }
                 }
@@ -234,8 +233,6 @@
                         $result = "passed";
                         $details = "xml files are identical";
                         $passed_counter = $passed_counter + 1;
-                        //test both otherwise only parse wil be checked
-
                     }
                     else{
                         $dir_fail = $dir_fail + 1;
@@ -322,6 +319,10 @@
                 if($parse_only != true){
                     $difference = "";
                 }
+                generateTestRow($table, $id_counter, $filename,$result,$details,$difference);
+            }
+            if($parse_only == false){
+                $difference = "";
                 generateTestRow($table, $id_counter, $filename,$result,$details,$difference);
             }
             

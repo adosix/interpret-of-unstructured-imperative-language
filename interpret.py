@@ -195,7 +195,7 @@ def aritmetic_op(val, values, global_frame, local_frame, temp_frame, labels):
           if typ2 == "var":
                var_control(values[2][:2], values[2][3:], global_frame, local_frame, temp_frame)
                values[2] = get_var(values[2][3:], global_frame, local_frame, temp_frame)
-               is_int(values[2])
+               is_int(values[2])       
      else:
           print("53: Nesprávný typ operandů.")
           sys.exit(53)
@@ -209,11 +209,16 @@ def aritmetic_op(val, values, global_frame, local_frame, temp_frame, labels):
 def is_var(val):
      pass
 def is_int(val):
-     return re.match(r"^[+,-]?[0-9]+$", val) is not None
+     if re.match(r"^[+,-]?[0-9]+$",  str(val)) is not None:
+          print("53: Nesprávný typ operandů.")
+          sys.exit(53)    
 def is_bool(val):
+
      return val == "true" or val == "false"
 def is_string(val):
-     pass
+     if re.match(r"^([a-zA-Z\u0021\u0022\u0024-\u005B\u005D-\uFFFF|(\\\\[0-90-90-9])*$", val) is not None:
+          print("53: Nesprávný typ operandů.")
+          sys.exit(53) 
 def is_type(val):
      pass
 def is_label(val):
