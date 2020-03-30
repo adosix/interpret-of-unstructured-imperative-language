@@ -39,17 +39,22 @@ def process_instructions(root):
           values = []
           opcode = inst.get('opcode')
           if DEBUG:
-               print("====CURRENT INSTRUCTION===========")
+               print("===========CURRENT INSTRUCTION===========")
                print(opcode)
-               print("==================================")
+               print("=========================================")
           #-----MOVE----
           #-----⟨var⟩ ⟨symb⟩
           if opcode == "MOVE":
                if not correct_n_of_arg(inst,2):
                     error(32, "invalid_n_of_args", inst)
+               if DEBUG:
+                    print("----arguments of MOVE instruction------")
+                    print(inst[0].text + ", " + inst[1].text)
+                    print("----------------------------------")
+               move(inst, values, global_frame, local_frame, temp_frame, labels)     
           #-----CREATEFRAME----
           #-----PUSHFRAME----
-          #-----POPFRAME----
+          #-----POPFRAME---- 
           elif opcode == "CREATEFRAME" or opcode == "PUSHFRAME" or opcode == "POPFRAME":
                if not correct_n_of_arg(inst,0):
                     error(32, "invalid_n_of_args", inst)
@@ -92,7 +97,16 @@ def process_instructions(root):
                     print(inst[0].text + ", " + inst[1].text + ", " + inst[2].text)
                     print("----------------------------------")
                values = aritmetic_op(inst, values, global_frame, local_frame, temp_frame, labels)
-               result = values[1] + values[2]
+               if(opcode == "ADD"):
+                    result = values[1] + values[2]
+               elif(opcode == "SUB"):
+                    result = values[1] - values[2]
+               elif(opcode == "MUL"):
+                    result = values[1] * values[2]
+               elif(opcode == "IDIV"):
+                    if(values[2] == 0):
+                         error(57,"Division by zero: instruction IDIV, order: " + str(order))
+                    result = values[1] // values[2]
                if DEBUG:
                     print("----result of operatio------------")
                     print(result)
@@ -104,17 +118,85 @@ def process_instructions(root):
           #-----AND----
           #-----OR----
           #-----NOT----
-          #-----⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
+          #-----⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
           elif opcode == "LT" or opcode == "GT" or opcode == "EQ" or  opcode == "AND" or opcode == "OR" or opcode == "NOT":
                if not correct_n_of_arg(inst,3):
-                    error(32, "invalid n of args", inst)
+                    error(32, "invalid_n_of_args", inst)
+          #-----INT2CHAR----
+          #-----⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
+          elif opcode == "INT2CHAR":
+               if not correct_n_of_arg(inst,3):
+                    error(32, "invalid_n_of_args", inst)
+          #-----STRI2INT----
+          #-----⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
+          elif opcode == "STRI2INT":
+               if not correct_n_of_arg(inst,3):
+                    error(32, "invalid_n_of_args", inst)
+          #-----READ----
+          #-----⟨var⟩ ⟨type⟩
+          elif opcode == "READ":
+               if not correct_n_of_arg(inst,2):
+                    error(32, "invalid_n_of_args", inst)
+          #-----WRITE----
+          #-----⟨symb⟩
           elif opcode == "WRITE":
                if not correct_n_of_arg(inst,1):
-                    error(32, "invalid n of args", inst)
+                    error(32, "invalid_n_of_args", inst)
                write(inst, values,)
-               
+          #-----CONCAT----
+          #-----⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
+          elif opcode == "CONCAT":
+               if not correct_n_of_arg(inst,3):
+                    error(32, "invalid_n_of_args", inst)
+          #-----STRLEN----
+          #-----⟨var⟩ ⟨symb⟩
+          elif opcode == "STRLEN":
+               if not correct_n_of_arg(inst,2):
+                    error(32, "invalid_n_of_args", inst)
+          #-----GETCHAR----
+          #-----SETCHAR----
+          #-----⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
+          elif opcode == "GETCHAR" or opcode == "SETCHAR":
+               if not correct_n_of_arg(inst,3):
+                    error(32, "invalid_n_of_args", inst)
+          #-----TYPE----
+          #-----⟨var⟩ ⟨symb⟩
+          elif opcode == "TYPE":
+               if not correct_n_of_arg(inst,2):
+                    error(32, "invalid_n_of_args", inst)
+          #-----JUMP----
+          #-----LABEL----
+          #-----⟨label⟩
+          elif opcode == "JUMP" or opcode == "LABEL":
+               if not correct_n_of_arg(inst,1):
+                    error(32, "invalid_n_of_args", inst)
+          #-----JUMPIFEQ----
+          #-----JUMPIFNEQ----
+          #-----⟨label⟩ ⟨symb1⟩ ⟨symb2⟩
+          elif opcode == "JUMPIFEQ" or opcode == "JUMPIFNEQ":
+               if not correct_n_of_arg(inst,3):
+                    error(32, "invalid_n_of_args", inst)
+          #-----EXIT----
+          #-----⟨symb⟩
+          elif opcode == "EXIT":
+               if not correct_n_of_arg(inst,1):
+                    error(32, "invalid_n_of_args", inst)
+               if DEBUG:
+                    print("----arguments of arithm inst------")
+                    print(inst[0].text)
+                    print("----------------------------------")
           else:
                error(32,"Instruction with invalid order opcode: " +  str(opcode) + " order: " + str(order))
+def move(val, values, global_frame, local_frame, temp_frame, labels):
+     values.append(check_val(val[0], "var", labels))
+     var_control(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
+     
+     values.append(check_val(val[1], "var", labels))
+     var_control(values[1][:2], values[1][3:], global_frame, local_frame, temp_frame)
+     values[1] = get_var(values[1][3:], global_frame, local_frame, temp_frame)
+
+     set_val_to_var(values[0][:2], values[0][3:], values[1], global_frame, local_frame, temp_frame)
+
 def write(inst, values,):
      typ = get_atrib_type(inst[0].attrib["type"])
      if DEBUG:
@@ -185,7 +267,7 @@ def is_label(val):
      pass
 def check_atrib_type(type, atrib_type):
      if(type != atrib_type):
-          error(32, "invalid attribute type")
+          error(32, "invalid attributed type")
 
 def get_var(var_name, global_frame, local_frame, temp_frame):
      if var_name in global_frame:
@@ -219,7 +301,7 @@ def get_atrib_type(atrib_type):
      elif(atrib_type == "type"):
           return atrib_type
      else:
-          error(32, "Argument has an invalid type")
+          error(53, "Argument has an invalid type")
 
 def var_control(frame_name, var_name, global_frame, local_frame, temp_frame):
      if frame_name == "GF":
@@ -283,29 +365,27 @@ def def_var(frame_name, var_name, global_frame, local_frame, temp_frame):
           global_frame[var_name] = None
      elif frame_name == "TF":
           if(temp_frame == None):
-               error(32,"frame doesn t exist")
+               error(32,"Temporary frame doesn't exists")
           else:
                temp_frame[var_name] = None
 
      elif frame_name == "LF":
           if(local_frame == None):
-               error(32,"frame doesn t exist")
+               error(32,"Local frame doesn't exists")
           else:
                local_frame[var_name] = None
      else:
-          error(32,"wrong frame name")
+          error(32,"invalid frame name, only GF, LF and TF are allowed")
 
 def check_instruction(inst):
      arg_n = 1
      if inst.get('opcode') == None or inst.get('order') == None:
-          print(sys.stderr,"Instruction without opcode or order ")
-          error(32)
+          error(32,"Instruction without opcode or order ")
      if  (int(inst.get('order')) < 0 ):
           error(32,"Instruction with invalid order opcode: " +  str(inst.get('opcode')) + " order: " + str(inst.get('order')))
      for arg in inst:
           if(arg.tag != "arg"+str(arg_n)) or (arg.attrib["type"] not in types):
-               print(sys.stderr,"wrong name of argument of the instruction " + str(inst[0]))
-               error(32)
+               error(32,"Wrong name of argument of the instruction "+ str(inst[0]))
           arg_n += 1
 
 def labels_check(root):
@@ -313,8 +393,7 @@ def labels_check(root):
           check_instruction(inst)
           if(inst.attrib["opcode"] == "LABEL"):
                if (inst[0].text in labels) or not correct_n_of_arg(inst,1):
-                    print(sys.stderr,"Instruction LABEL has wrong number of arguments or the label is redefined")
-                    error(32)
+                    error(32,"Instruction LABEL has wrong number of arguments or the label is redefined")
                labels[inst[0].text] = int(inst.attrib["order"])
 
 def correct_n_of_arg(inst, n_of_arg):
@@ -323,11 +402,10 @@ def correct_n_of_arg(inst, n_of_arg):
 def check_syntax(xml_tree):
      root = xml_tree.getroot()
      if(root.tag != "program") or (root.attrib['language']  !=  "IPPcode20"):
-          error(32, "root_el")
+          error(32, "root element has wrong tag or attrinute language")
      for atr in root.attrib:
           if (atr != "language") and (atr != "name") and (atr != "description"):
-               print(sys.stderr,"root element has arguments")
-               error(32)  
+               error(32,"Root element has invalid arguments")  
      return root   
 
 def parse_file(file_path):
@@ -368,18 +446,11 @@ def error(err_val, desc="", inst = None):
           31: "Wrong XML format fo input file/s",
           32: "unexpected structure of XML file, lexical of syntax error",
           53: "wrong operand/s",
+          57: "Division by 0",
           99: "internal error"
      }
-     if desc == "invalid n of args" and inst != None:
+     if desc == "invalid_n_of_args" and inst != None:
           print(sys.stderr,"Instruction with invalid n of arguments opcode: " +  str(inst.get('opcode')) + " order: " + str(inst.get('order')))
-     elif desc == "inv a type":
-          print(sys.stderr,"Argument has an invalid type")
-     elif desc == "wrong frame name":
-          print(sys.stderr,"invalid frame name, only GF, LF and TF are allowed")
-     elif desc == "frame doesn t exist":
-          print(sys.stderr,"Frame doesn't exists")
-     elif desc == "root_el":
-          print(sys.stderr,"root element has wrong tag or attrinute language")
      elif desc != "":
           print(sys.stderr,desc)
      print(sys.stderr,str(err_val) + ": " + switch.get(err_val,": Invalid error code"))
