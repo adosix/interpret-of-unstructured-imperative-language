@@ -182,6 +182,8 @@
             // Run parse.php
             $difference = "" ;
             
+            //int-only
+            //both
             if($parse_only == false){
                 $result = "";
                 $details= "";
@@ -198,27 +200,69 @@
                             error(11,"TEST ERROR:interpret script doesn't exists at path " . $int_script);
                     } 
                     exec("php7.4 " . $parse_script . " < " . $file_src . " > tempo.out" , $parseOut, $parseRC);
-                    exec("python3.8 " . $int_script . " --source=tempo.out > tempos.out" , $intOut, $intRC);
-                    
-                    $diff=array();
-                    exec("diff tempos.out ".$file_loc. ".out ", $diff, $parserResult);
-                    if ($parserResult != 0)
-                    { 
-                        $dir_fail = $dir_fail + 1;
-                        $last_flag=-1;
-                        $result = "failed";
-                        $details = "output files different";
-                        $failed_counter = $failed_counter + 1;
+                    if($parseRC != 0){     
+                        $number = trim(file_get_contents($file_loc. ".rc"));
+                        if($number == $parseRC){
+                            $dir_pass = $dir_pass + 1;
+                            $last_flag=1;
+                            $result = "passed";
+                            $details = "rc is: " .$parseRC ;
+                            $passed_counter = $passed_counter + 1;
+                        }
+                        else{
+                            $dir_fail = $dir_fail + 1;
+                            $last_flag=-1;
+                            $result = "failed ";
+                            $details = "rc should be: " . $number ."\r\n".
+                                    "rc is: " .$parseRC;
+                            $failed_counter = $failed_counter + 1;
+                        }
                     }
                     else{
-                        $dir_pass = $dir_pass + 1;
-                        $result = "passed";
-                        $details = "output files are identical";
-                        $passed_counter = $passed_counter + 1;
+
+                        exec("python3.8 " . $int_script . " --source=tempo.out > tempos.out" , $intOut, $intRC);
+                        $number = trim(file_get_contents($file_loc. ".rc"));
+                        if($number != $intRC){
+                            $dir_fail = $dir_fail + 1;
+                            $last_flag=-1;
+                            $result = "failed ";
+                            $details = "rc should be: " . $number ."\r\n".
+                                    "rc is: " .$intRC;
+                            $failed_counter = $failed_counter + 1;
+
+                        }
+                        else{             
+                            if($intRC != 0){          
+                                $dir_pass = $dir_pass + 1;
+                                $last_flag=1;
+                                $result = "passed";
+                                $details = "rc is: " .$intRC ;
+                                $passed_counter = $passed_counter + 1;
+                            }  
+                            else{
+                                $diff=array();
+                                exec("diff tempos.out ".$file_loc. ".out ", $diff, $parserResult);
+                                if ($parserResult != 0)
+                                { 
+                                    $dir_fail = $dir_fail + 1;
+                                    $last_flag=-1;
+                                    $result = "failed";
+                                    $details = "output files different";
+                                    $failed_counter = $failed_counter + 1;
+                                }
+                                else{
+                                    $dir_pass = $dir_pass + 1;
+                                    $result = "passed";
+                                    $details = "output files are identical";
+                                    $passed_counter = $passed_counter + 1;
+                                }
+                            }
+
+                        }                   
                     }
                 }
             }
-            //test both or just interpret
+            //parse-only
             else{
                 exec("php7.4 " . $parse_script . " < " . $file_src . " > temp.out" , $parseOut, $parseRC);
                 if($parseRC == 0){
