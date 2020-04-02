@@ -113,14 +113,18 @@ def process_instructions(root):
           #-----MUL----
           #-----IDIV----
           #-----⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
-          elif opcode == "ADD" or opcode == "SUB" or opcode == "MUL" or opcode == "IDIV":
+          elif opcode == "ADD" or opcode == "SUB" or opcode == "MUL" or opcode == "IDIV" or opcode == "LT" or opcode == "GT" or opcode == "EQ" :
                if not correct_n_of_arg(inst,3):
                     error(32, "invalid_n_of_args", inst)
                if DEBUG:
                     print("----arguments of arithm inst------")
-                    print(inst[0].text + ", " + inst[1].text + ", " + inst[2].text)
+                    print(str(inst[0].text) + ", " + str(inst[1].text) + ", " + str(inst[2].text))
                     print("----------------------------------")
-               values = aritmetic_op(inst, values, global_frame, local_frame, temp_frame, labels)
+               op_eq = False
+               op_type = "int"
+               if(opcode == "EQ"):
+                    op_eq = True
+               values = aritmetic_op(inst, values, global_frame, local_frame, temp_frame, labels, op_type, op_eq)
                if(opcode == "ADD"):
                     result = values[1] + values[2]
                elif(opcode == "SUB"):
@@ -131,6 +135,12 @@ def process_instructions(root):
                     if(values[2] == 0):
                          error(57,"Division by zero: instruction IDIV, order: " + str(order))
                     result = values[1] // values[2]
+               elif(opcode == "LT"):
+                    result = values[1] < values[2]
+               elif(opcode == "GT"):
+                    result = values[1] > values[2]
+               elif(opcode == "EQ"):
+                    result = values[1] == values[2]
                if DEBUG:
                     print("----result of operatio------------")
                     print(result)
@@ -259,12 +269,12 @@ def move(val, values, global_frame, local_frame, temp_frame, labels):
 def write(inst, values,):
      typ = get_atrib_type(inst[0].attrib["type"])
      values.append(check_val(inst[0], typ, labels))
-
+     
      if typ == 'var':
           var_control(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
           values[0] = get_var(values[0][3:], global_frame, local_frame, temp_frame)
           typ = var_type_control(values[0])
-     elif typ == 'int':
+     if typ == 'int':
           is_int(values[0])
      elif typ == 'string':
           is_string(values[0])
@@ -317,12 +327,12 @@ def bool_op(val, values, global_frame, local_frame, temp_frame, labels, opcode):
      return values
 
 
-def aritmetic_op(val, values, global_frame, local_frame, temp_frame, labels):
+def aritmetic_op(val, values, global_frame, local_frame, temp_frame, labels, op_type, op_eq):
      values.append(check_val(val[0], "var", labels))
      var_control(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
      typ1 = get_atrib_type(val[1].attrib["type"])
      typ2 = get_atrib_type(val[2].attrib["type"])
-     if typ1 == "int" or typ1 == "var":
+     if typ1 == op_type or typ1 == "var" or op_eq :
           values.append(check_val(val[1], typ1, labels))
           if typ1 == "var":
                var_control(values[1][:2], values[1][3:], global_frame, local_frame, temp_frame)
@@ -330,7 +340,7 @@ def aritmetic_op(val, values, global_frame, local_frame, temp_frame, labels):
                is_int(values[1])
      else:
           error(53,"Wrong type of operand int: " + str(val))
-     if typ2 == "int" or typ2 == "var":
+     if typ2 == op_type or typ2 == "var" or op_eq :
           values.append(check_val(val[2], typ2, labels))
           if typ2 == "var":
                var_control(values[2][:2], values[2][3:], global_frame, local_frame, temp_frame)
