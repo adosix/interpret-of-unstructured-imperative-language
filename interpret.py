@@ -29,13 +29,14 @@ def main():
      #----LABELS check + Instruction general structure check
      labels_check(root)
      #----INSTRUCTION proccessing
-     process_instructions(root,1) # 1 stands for first instruction
+     process_instructions(root,0) # 1 stands for first instruction
 
 def process_instructions(root, order):
-     global labels, local_frame, temp_frame, stack, frame_stack, call_stack
-     global_frame = {}
-     i_done = -1
-     for inst in root:
+     global labels, local_frame, temp_frame, stack, frame_stack, call_stack, i_done,global_frame, call_stack
+     while True:
+          inst = get_next_inst(root,order)
+          if inst == None:
+               exit(0)
           values = []
           opcode = inst.get('opcode')
           order = inst.get('order')
@@ -95,10 +96,21 @@ def process_instructions(root, order):
           elif opcode == "CALL":
                if not correct_n_of_arg(inst,1):
                     error(32, "invalid_n_of_args", inst)
+               values.append(check_val(inst[0], "label", labels))
+               call_stack.append(int(inst.attrib["order"]))
+               if inst[0].text in labels:
+                    process_instructions(root, int(labels[inst[0].text])-1)
+               else:
+                    error(52,"Label doesn't exist")
+               break
           #-----RETURN----
           elif opcode == "RETURN":
                if not correct_n_of_arg(inst,0):
                     error(32, "invalid_n_of_args", inst)
+               if call_stack == []:
+                    error(56, "Stack is empty")
+               process_instructions(root, int(call_stack.pop()))
+               break
           #-----PUSHS----
           #-----⟨symb⟩
           elif opcode == "PUSHS":
@@ -136,6 +148,10 @@ def process_instructions(root, order):
                     op_type = "bool"
 
                values = aritmetic_op(inst, values, global_frame, local_frame, temp_frame, labels, op_type, op_eq)
+               if DEBUG:
+                    print("----values which will be processed------")
+                    print(str(values[1]) + ", " + str(values[2]))
+                    print("----------------------------------")
                if(opcode == "ADD"):
                     result = values[1] + values[2]
                elif(opcode == "SUB"):
@@ -219,17 +235,39 @@ def process_instructions(root, order):
                     print("----------------------------------")
                type_i(inst, values, global_frame, local_frame, temp_frame, labels)
           #-----JUMP----
-          #-----LABEL----
           #-----⟨label⟩
-          elif opcode == "JUMP" or opcode == "LABEL":
+          elif opcode == "JUMP":
                if not correct_n_of_arg(inst,1):
                     error(32, "invalid_n_of_args", inst)
+               if DEBUG:
+                    print("----argument of JUMP instruction------")
+                    print(inst[0].text)
+                    print("----------------------------------")
+               if inst[0].text in labels:
+                    process_instructions(root, int(labels[inst[0].text])-1)
+               else:
+                    error(52,"Label doesn't exist")
           #-----JUMPIFEQ----
           #-----JUMPIFNEQ----
           #-----⟨label⟩ ⟨symb1⟩ ⟨symb2⟩
           elif opcode == "JUMPIFEQ" or opcode == "JUMPIFNEQ":
                if not correct_n_of_arg(inst,3):
                     error(32, "invalid_n_of_args", inst)
+               op_eq = True
+               op_type = "not_important"   
+               values = aritmetic_op(inst, values, global_frame, local_frame, temp_frame, labels, op_type, op_eq)
+               result = values[1] == values[2]
+               if DEBUG:
+                    print("----values which will be processed------")
+                    print(str(values[1]) + ", " + str(values[2]))
+                    print("----------------------------------")
+               if inst[0].text in labels:
+                    if result == True and opcode == "JUMPIFEQ":
+                              process_instructions(root, int(labels[inst[0].text])-1)
+                    elif result == False and opcode == "JUMPIFNEQ":
+                              process_instructions(root, int(labels[inst[0].text])-1)
+               else:
+                    error(52,"Label doesn't exist")
           #-----EXIT----
           #-----⟨symb⟩
           elif opcode == "EXIT":
@@ -239,6 +277,8 @@ def process_instructions(root, order):
                     print("----arguments of arithm inst------")
                     print(inst[0].text)
                     print("----------------------------------")
+               #todo iba int a od 0 do 49
+               return int(inst[0].text)
           #-----BREAK----
           #-----
           elif opcode == "BREAK":
@@ -249,6 +289,8 @@ def process_instructions(root, order):
                     print(inst[0].text)
                     print("----------------------------------")
                break_i(order, global_frame, local_frame, temp_frame,labels, i_done)
+          elif opcode == "LABEL" or opcode == "DPRINT":
+               pass
           else:
                error(32,"Instruction with invalid order opcode: " +  str(opcode) + " order: " + str(order))
 def move(val, values, global_frame, local_frame, temp_frame, labels):
@@ -273,6 +315,22 @@ def move(val, values, global_frame, local_frame, temp_frame, labels):
                print(whole_value_2.text)
           values.append(check_val(whole_value_2, typ_2, labels))
      set_value(frame_1, var_name_1, values[1], global_frame, local_frame, temp_frame)
+
+def get_next_inst(root,order):
+     best_so_far_o = None
+     best_so_far_i = None
+     for inst in root:
+          order_act = int(inst.get('order'))
+          if order_act > int(order):
+               if best_so_far_o == None:
+                    best_so_far_o = order_act
+                    best_so_far_i = inst
+
+               elif best_so_far_o > order_act:
+                    best_so_far_o = order_act
+                    best_so_far_i = inst
+
+     return best_so_far_i
 
 def break_i(order, global_frame, local_frame, temp_frame, labels,i_done):
      print(sys.stderr,"Instructions done: " + str(i_done))
@@ -300,8 +358,7 @@ def not_i(val, values, global_frame, local_frame, temp_frame, labels):
                frame_2 = values[1][:2]
                var_name_2 = values[1][3:]
                var_check(frame_2, var_name_2, global_frame, local_frame, temp_frame)
-               values[1] = get_var(values[1][3:], global_frame, local_frame, temp_frame)
-               
+               values[1] = get_var(values[1][3:], global_frame, local_frame, temp_frame)   
      else:
           error(53,"Wrong type of operand int: " + str(val))
      is_bool(values[1])
@@ -383,16 +440,25 @@ def write(inst, values,global_frame, local_frame, temp_frame):
           print("----------------------------------")
 
 def aritmetic_op(val, values, global_frame, local_frame, temp_frame, labels, op_type, op_eq):
-     values.append(check_val(val[0], "var", labels))
-     var_check(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
+     if op_type != "not_important":
+          values.append(check_val(val[0], "var", labels))
+          var_check(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
+     else:
+          values.append(val[0].text)
+
      typ1 = get_atrib_type(val[1].attrib["type"])
      typ2 = get_atrib_type(val[2].attrib["type"])
+     if op_eq:
+          if ((typ1 != "var" and typ2 != "var") and (typ1 != "nil" and typ2 != "nil") and (typ1 != typ2)):
+               error(53,"Wrong type of operand for EQ: " + str(typ1) + " + " + str(typ2))
+     
      if typ1 == op_type or typ1 == "var" or op_eq :
           values.append(check_val(val[1], typ1, labels))
           if typ1 == "var":
                var_check(values[1][:2], values[1][3:], global_frame, local_frame, temp_frame)
                values[1] = get_var(values[1][3:], global_frame, local_frame, temp_frame)
-               is_int(values[1])
+               if not op_eq:
+                    is_int(values[1])
      else:
           print(typ1)
           error(53,"Wrong type of operand int: " + str(val))
@@ -401,14 +467,19 @@ def aritmetic_op(val, values, global_frame, local_frame, temp_frame, labels, op_
           if typ2 == "var":
                var_check(values[2][:2], values[2][3:], global_frame, local_frame, temp_frame)
                values[2] = get_var(values[2][3:], global_frame, local_frame, temp_frame)
-               is_int(values[2])       
+               if not op_eq:
+                    is_int(values[2])       
      else:
           error(53,"Wrong type of operand " + str(op_type) + ": " + str(val))
-     var_check(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
+     if op_type != "not_important":
+          var_check(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
      if DEBUG:
           print("----values (of arithmetic op)-----")
           print(values)
           print("----------------------------------")
+     
+     if values[1] == None or values[2] == None:
+          error(56, "Unset value")
      return values
 
 def is_var(val):
@@ -598,6 +669,10 @@ def labels_check(root):
                if (inst[0].text in labels) or not correct_n_of_arg(inst,1):
                     error(32,"Instruction LABEL has wrong number of arguments or the label is redefined")
                labels[inst[0].text] = int(inst.attrib["order"])
+     if DEBUG:
+          print("----List of labels-----")
+          print(labels)
+          print("----------------------------------")
 
 def correct_n_of_arg(inst, n_of_arg):
      return (len(inst) == n_of_arg)
@@ -665,8 +740,10 @@ def error(err_val, desc="", inst = None):
 if __name__ == "__main__":
      local_frame = None
      temp_frame = None
+     global_frame = {}
      stack = []
      frame_stack = []
      call_stack = []
      labels = {}
+     i_done = -1
      main()
