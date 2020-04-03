@@ -29,17 +29,18 @@ def main():
      #----LABELS check + Instruction general structure check
      labels_check(root)
      #----INSTRUCTION proccessing
-     process_instructions(root)
+     process_instructions(root,1) # 1 stands for first instruction
 
-def process_instructions(root):
-     global labels, global_frame, local_frame, temp_frame, stack, frame_stack, call_stack, instr_total
-     order = 1
-
+def process_instructions(root, order):
+     global labels, local_frame, temp_frame, stack, frame_stack, call_stack
+     global_frame = {}
+     i_done = -1
      for inst in root:
-          order += 1
-          instr_total += 1
           values = []
           opcode = inst.get('opcode')
+          order = inst.get('order')
+          if opcode == None or order == None:
+               error(23,"Opcode or order is missing")
           if DEBUG:
                print("===========CURRENT INSTRUCTION===========")
                print(opcode)
@@ -112,8 +113,15 @@ def process_instructions(root):
           #-----SUB----
           #-----MUL----
           #-----IDIV----
+
+          #-----LT----
+          #-----GT----
+          #-----EQ----
+
+          #-----AND----
+          #-----OR----
           #-----⟨var⟩ ⟨symb 1 ⟩ ⟨symb 2 ⟩
-          elif opcode == "ADD" or opcode == "SUB" or opcode == "MUL" or opcode == "IDIV" or opcode == "LT" or opcode == "GT" or opcode == "EQ" :
+          elif opcode == "ADD" or opcode == "SUB" or opcode == "MUL" or opcode == "IDIV" or opcode == "LT" or opcode == "GT" or opcode == "EQ" or opcode == "AND" or opcode == "OR":
                if not correct_n_of_arg(inst,3):
                     error(32, "invalid_n_of_args", inst)
                if DEBUG:
@@ -124,6 +132,9 @@ def process_instructions(root):
                op_type = "int"
                if(opcode == "EQ"):
                     op_eq = True
+               elif(opcode == "AND" or opcode == "OR"):
+                    op_type = "bool"
+
                values = aritmetic_op(inst, values, global_frame, local_frame, temp_frame, labels, op_type, op_eq)
                if(opcode == "ADD"):
                     result = values[1] + values[2]
@@ -141,40 +152,21 @@ def process_instructions(root):
                     result = values[1] > values[2]
                elif(opcode == "EQ"):
                     result = values[1] == values[2]
-               if DEBUG:
-                    print("----result of operatio------------")
-                    print(result)
-                    print("----------------------------------")
-               set_val_to_var(values[0][:2], values[0][3:], result, global_frame, local_frame, temp_frame)
-          #-----LT----
-          #-----GT----
-          #-----EQ----
-          #-----⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
-          elif opcode == "LT" or opcode == "GT" or opcode == "EQ" :
-                if not correct_n_of_arg(inst,3):
-                    error(32, "invalid_n_of_args", inst)
-          #-----AND----
-          #-----OR----
-          #-----NOT----
-          #-----⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
-          elif opcode == "AND" or opcode == "OR" :
-               if not correct_n_of_arg(inst,3):
-                    error(32, "invalid_n_of_args", inst)
-               if DEBUG:
-                    print("----arguments of arithm inst------")
-                    print(inst[0].text + ", " + inst[1].text + ", " + inst[2].text)
-                    print("----------------------------------")
-               values = bool_op(inst, values, global_frame, local_frame, temp_frame, labels, opcode)
                if opcode == "AND":
                     result = 'true' if values[1] == values[2] == 'true' else 'false'
                elif opcode == "OR":
                     result = 'true' if values[1] == 'true' or values[2] == 'true' else 'false'
-               set_val_to_var(values[0][:2], values[0][3:], result, global_frame, local_frame, temp_frame)
+               if DEBUG:
+                    print("----result of operatio------------")
+                    print(result)
+                    print("----------------------------------")
+               set_value(values[0][:2], values[0][3:], result, global_frame, local_frame, temp_frame)
           #-----NOT----
           #-----⟨var⟩ ⟨symb1⟩ 
           elif opcode == "NOT":
-                if not correct_n_of_arg(inst,2):
+               if not correct_n_of_arg(inst,2):
                     error(32, "invalid_n_of_args", inst)
+               not_i(inst, values, global_frame, local_frame, temp_frame, labels)
           #-----INT2CHAR----
           #-----⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
           elif opcode == "INT2CHAR":
@@ -199,7 +191,7 @@ def process_instructions(root):
                     print("----arguments of arithm inst------")
                     print(inst[0].text)
                     print("----------------------------------")
-               write(inst, values,)
+               write(inst, values,global_frame, local_frame, temp_frame)
           #-----CONCAT----
           #-----⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
           elif opcode == "CONCAT":
@@ -221,6 +213,11 @@ def process_instructions(root):
           elif opcode == "TYPE":
                if not correct_n_of_arg(inst,2):
                     error(32, "invalid_n_of_args", inst)
+               if DEBUG:
+                    print("----arguments of TYPE instruction------")
+                    print(inst[0].text + ", " + inst[1].text)
+                    print("----------------------------------")
+               type_i(inst, values, global_frame, local_frame, temp_frame, labels)
           #-----JUMP----
           #-----LABEL----
           #-----⟨label⟩
@@ -242,6 +239,16 @@ def process_instructions(root):
                     print("----arguments of arithm inst------")
                     print(inst[0].text)
                     print("----------------------------------")
+          #-----BREAK----
+          #-----
+          elif opcode == "BREAK":
+               if not correct_n_of_arg(inst,0):
+                    error(32, "invalid_n_of_args", inst)
+               if DEBUG:
+                    print("----arguments of arithm inst------")
+                    print(inst[0].text)
+                    print("----------------------------------")
+               break_i(order, global_frame, local_frame, temp_frame,labels, i_done)
           else:
                error(32,"Instruction with invalid order opcode: " +  str(opcode) + " order: " + str(order))
 def move(val, values, global_frame, local_frame, temp_frame, labels):
@@ -250,7 +257,7 @@ def move(val, values, global_frame, local_frame, temp_frame, labels):
 
      frame_1 = values[0][:2]
      var_name_1 = values[0][3:]
-     var_control(frame_1, var_name_1, global_frame, local_frame, temp_frame)
+     var_check(frame_1, var_name_1, global_frame, local_frame, temp_frame)
 
      whole_value_2 = val[1]
      typ_2 = get_atrib_type(whole_value_2.attrib["type"])
@@ -258,20 +265,97 @@ def move(val, values, global_frame, local_frame, temp_frame, labels):
           values.append(check_val(val[1], typ_2, labels))
           frame_2 = values[1][:2]
           var_name_2 = values[1][3:]
-          var_control(frame_2, var_name_2, global_frame, local_frame, temp_frame)
+          var_check(frame_2, var_name_2, global_frame, local_frame, temp_frame)
           values[1] = get_var(values[1][3:], global_frame, local_frame, temp_frame)
      else:
           if DEBUG:
                print(typ_2)
                print(whole_value_2.text)
           values.append(check_val(whole_value_2, typ_2, labels))
-     set_val_to_var(frame_1, var_name_1, values[1], global_frame, local_frame, temp_frame)
-def write(inst, values,):
+     set_value(frame_1, var_name_1, values[1], global_frame, local_frame, temp_frame)
+
+def break_i(order, global_frame, local_frame, temp_frame, labels,i_done):
+     print(sys.stderr,"Instructions done: " + str(i_done))
+     print(sys.stderr,"Order of instructions: " + str(order))
+     print(sys.stderr,"global frame: " + str(global_frame))
+     print(sys.stderr,"local frame: " + str(local_frame))
+     print(sys.stderr,"temporary frame: " + str(temp_frame))
+
+
+
+def not_i(val, values, global_frame, local_frame, temp_frame, labels):
+     whole_value_1 = val[0]
+     values.append(check_val(whole_value_1, "var", labels))
+
+     frame_1 = values[0][:2]
+     var_name_1 = values[0][3:]
+     var_check(frame_1, var_name_1, global_frame, local_frame, temp_frame)
+
+     whole_value_2 = val[1]
+     typ_2 = get_atrib_type(whole_value_2.attrib["type"])
+     if typ_2 == "var" or typ_2 == "bool":
+          values.append(check_val(val[1], typ_2, labels))
+          if typ_2 == "var":
+               values.append(check_val(val[1], typ_2, labels))
+               frame_2 = values[1][:2]
+               var_name_2 = values[1][3:]
+               var_check(frame_2, var_name_2, global_frame, local_frame, temp_frame)
+               values[1] = get_var(values[1][3:], global_frame, local_frame, temp_frame)
+               
+     else:
+          error(53,"Wrong type of operand int: " + str(val))
+     is_bool(values[1])
+     if values[1] == "true":
+          values[1] = "false"
+     else:
+          values[1] = "true"
+
+     if DEBUG:
+          print("----value of to be written into variable-----")
+          print(values[1])
+          print("----------------------------------")
+     set_value(frame_1, var_name_1, values[1], global_frame, local_frame, temp_frame)
+
+def type_i(val, values, global_frame, local_frame, temp_frame, labels):
+     whole_value_1 = val[0]
+     values.append(check_val(whole_value_1, "var", labels))
+
+     frame_1 = values[0][:2]
+     var_name_1 = values[0][3:]
+     var_check(frame_1, var_name_1, global_frame, local_frame, temp_frame)
+
+     whole_value_2 = val[1]
+     typ_2 = get_atrib_type(whole_value_2.attrib["type"])
+     if typ_2 == "var":
+          values.append(check_val(val[1], typ_2, labels))
+          frame_2 = values[1][:2]
+          var_name_2 = values[1][3:]
+          var_check(frame_2, var_name_2, global_frame, local_frame, temp_frame)
+          values[1] = get_var(values[1][3:], global_frame, local_frame, temp_frame)
+
+          if values[1] == 'true' or values[1] == 'false':
+               typ_2 = 'bool'
+          elif values[1] == 'nil':
+               typ_2 = 'nil'
+          elif type(values[1]) == int:
+               typ_2 = 'int'
+          elif type(values[1]) == str:
+               typ_2 = 'string'
+          else:
+               typ_2 = ''
+     else:
+          values.append(check_val(whole_value_2, typ_2, labels))
+     if DEBUG:
+          print(typ_2)
+          print(whole_value_2.text)
+     set_value(frame_1, var_name_1, typ_2, global_frame, local_frame, temp_frame)
+     
+def write(inst, values,global_frame, local_frame, temp_frame):
      typ = get_atrib_type(inst[0].attrib["type"])
      values.append(check_val(inst[0], typ, labels))
      
      if typ == 'var':
-          var_control(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
+          var_check(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
           values[0] = get_var(values[0][3:], global_frame, local_frame, temp_frame)
           typ = var_type_control(values[0])
      if typ == 'int':
@@ -298,57 +382,29 @@ def write(inst, values,):
           print("")
           print("----------------------------------")
 
-def bool_op(val, values, global_frame, local_frame, temp_frame, labels, opcode):
-     values.append(check_val(val[0], "var", labels))
-     var_control(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
-     typ1 = get_atrib_type(val[1].attrib["type"])
-     typ2 = get_atrib_type(val[2].attrib["type"])
-     if typ1 == "bool" or typ1 == "var":
-          values.append(check_val(val[1], typ1, labels))
-          if typ1 == "var":
-               var_control(values[1][:2], values[1][3:], global_frame, local_frame, temp_frame)
-               values[1] = get_var(values[1][3:], global_frame, local_frame, temp_frame)
-               is_int(values[1])
-     else:
-          error(53,"Wrong type of operand bool: " + str(val))
-     if typ2 == "bool" or typ2 == "var":
-          values.append(check_val(val[2], typ2, labels))
-          if typ2 == "var":
-               var_control(values[2][:2], values[2][3:], global_frame, local_frame, temp_frame)
-               values[2] = get_var(values[2][3:], global_frame, local_frame, temp_frame)
-               is_int(values[2])       
-     else:
-          error(53,"Wrong type of operand bool: " + str(val))
-     var_control(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
-     if DEBUG:
-          print("----values (of arithmetic op)-----")
-          print(values)
-          print("----------------------------------")
-     return values
-
-
 def aritmetic_op(val, values, global_frame, local_frame, temp_frame, labels, op_type, op_eq):
      values.append(check_val(val[0], "var", labels))
-     var_control(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
+     var_check(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
      typ1 = get_atrib_type(val[1].attrib["type"])
      typ2 = get_atrib_type(val[2].attrib["type"])
      if typ1 == op_type or typ1 == "var" or op_eq :
           values.append(check_val(val[1], typ1, labels))
           if typ1 == "var":
-               var_control(values[1][:2], values[1][3:], global_frame, local_frame, temp_frame)
+               var_check(values[1][:2], values[1][3:], global_frame, local_frame, temp_frame)
                values[1] = get_var(values[1][3:], global_frame, local_frame, temp_frame)
                is_int(values[1])
      else:
+          print(typ1)
           error(53,"Wrong type of operand int: " + str(val))
      if typ2 == op_type or typ2 == "var" or op_eq :
           values.append(check_val(val[2], typ2, labels))
           if typ2 == "var":
-               var_control(values[2][:2], values[2][3:], global_frame, local_frame, temp_frame)
+               var_check(values[2][:2], values[2][3:], global_frame, local_frame, temp_frame)
                values[2] = get_var(values[2][3:], global_frame, local_frame, temp_frame)
                is_int(values[2])       
      else:
-          error(53,"Wrong type of operand int: " + str(val))
-     var_control(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
+          error(53,"Wrong type of operand " + str(op_type) + ": " + str(val))
+     var_check(values[0][:2], values[0][3:], global_frame, local_frame, temp_frame)
      if DEBUG:
           print("----values (of arithmetic op)-----")
           print(values)
@@ -362,17 +418,23 @@ def is_int(val):
           int(val)
           return 
      except:
+          if(val == None):
+               error(56,"Variable is unset: " + str(val))
           error(53,"Wrong type of operand int: " + str(val))
 def is_bool(val):
      return val == "true" or val == "false"
 def is_string(val):
      res = isinstance(val, str) 
      if res == False:
+          if(val == None):
+               error(56,"Variable is unset: " + str(val))
           error(53,"Wrong type of operand String: " + str(val))
 def is_type(val):
      pass
 def is_nil(val):
      if val != "nil":
+          if(val == None):
+               error(56,"Variable is unset: " + str(val))
           error(53,"Wrong type of operand nil: " + str(val))
 def is_label(val):
      pass
@@ -391,7 +453,7 @@ def get_var(var_name, global_frame, local_frame, temp_frame):
           error(54, "Variable doesn't exist")
 
 
-def set_val_to_var(frame_name, var_name, val, global_frame, local_frame, temp_frame):
+def set_value(frame_name, var_name, val, global_frame, local_frame, temp_frame):
      if frame_name == "GF":
           global_frame[var_name] = val
           if DEBUG_FRAME:
@@ -435,7 +497,7 @@ def get_atrib_type(atrib_type):
      else:
           error(53, "Argument has an invalid type")
 
-def var_control(frame_name, var_name, global_frame, local_frame, temp_frame):
+def var_check(frame_name, var_name, global_frame, local_frame, temp_frame):
      if frame_name == "GF":
           if var_name not in global_frame:
                error(54,"Variable doesn't exist")
@@ -584,6 +646,7 @@ def error(err_val, desc="", inst = None):
           10: "Wrong combination of parameters",
           11: "Error while opening input file/s",
           12: "Error while opening output file/s",
+          23: "lexical or syntacic error in code",
           31: "Wrong XML format fo input file/s",
           32: "unexpected structure of XML file, lexical of syntax error",
           53: "wrong operand/s",
@@ -600,12 +663,10 @@ def error(err_val, desc="", inst = None):
      sys.exit(err_val)
 
 if __name__ == "__main__":
-     instr_total = 0
      local_frame = None
      temp_frame = None
      stack = []
      frame_stack = []
      call_stack = []
      labels = {}
-     global_frame = {}
      main()
