@@ -79,6 +79,7 @@
     * @param $files_rc -> files with return codes
     */
         function generatHTML($parse_script, $files_src, $files_out, $files_rc){
+
             global $doc;
             global $body;
 
@@ -184,12 +185,19 @@
             
             //int-only
             //both
+            $file_in = $file_loc.".in";
             if($parse_only == false){
                 $result = "";
                 $details= "";
                 if($int_only== true){
                     $parseRC = 0;
-                    exec("python3.8 " . $int_script . " --source=".$file_src ." > tempos.out" , $intOut, $intRC);
+                    if (!file_exists($file_in)){ 
+                        exec("python3.8 " . $int_script . " --source=".$file_src ." > tempos.out" , $intOut, $intRC);
+                    } 
+                    else{
+                        exec("python3.8 " . $int_script . " --source=".$file_src . " --input=".$file_in  ." > tempos.out" , $intOut, $intRC);
+
+                    }
                     $number = trim(file_get_contents($file_loc. ".rc"));
                     if($number != $intRC){
                         $dir_fail = $dir_fail + 1;
@@ -198,7 +206,6 @@
                         $details = "rc should be: " . $number ."\r\n".
                                 "rc is: " .$intRC;
                         $failed_counter = $failed_counter + 1;
-
                     }
                     else{             
                         if($intRC != 0){          
@@ -255,7 +262,12 @@
                         }
                     }
                     else{
-                        exec("python3.8 " . $int_script . " --source=tempo.out > tempos.out" , $intOut, $intRC);
+                        if (!file_exists($file_in)){ 
+                            exec("python3.8 " . $int_script . " --source=tempo.out > tempos.out " , $intOut, $intRC);
+                        } 
+                        else{
+                            exec("python3.8 " . $int_script . " --source=tempo.out " . "--input=" . $file_in  ." > tempos.out" , $intOut, $intRC);
+                        }
                         if($number != $intRC){
                             $dir_fail = $dir_fail + 1;
                             $last_flag=-1;
