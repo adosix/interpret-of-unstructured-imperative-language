@@ -64,9 +64,7 @@ number of jumps
 
 
  <br>
-   # Documentation of the parser.php
-### name and surname: Andrej Ježík
-### login: xjezik03
+ 
 ## Interpret.py
 ### executing script
   example:   
