@@ -1,0 +1,10 @@
+.IPPcode20
+
+DEFVAR GF@a
+
+JUMP correct
+WRITE string@wrong
+
+LABEL correct
+WRITE string@correct
+

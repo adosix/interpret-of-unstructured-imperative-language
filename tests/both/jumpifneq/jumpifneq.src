@@ -38,7 +38,7 @@ WRITE string@1
 JUMPIFNEQ error string@abcd string@abcd
 WRITE string@1
 
-JUMPIFNEQ error string@\065B string@A\066
+JUMPIFNEQ error string@\065 string@\065
 WRITE string@1
 
 JUMPIFNEQ ok7 string@abc nil@nil

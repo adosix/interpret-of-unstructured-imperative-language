@@ -30,7 +30,7 @@ JUMP error
 LABEL ok2
 WRITE string@1
 
-JUMPIFEQ ok3 string@\065B string@A\066
+JUMPIFEQ ok3 string@\066 string@\066
 JUMP error
 LABEL ok3
 WRITE string@1

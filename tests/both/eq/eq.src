@@ -26,7 +26,7 @@ WRITE GF@a
 EQ GF@a string@abcd string@abcd
 WRITE GF@a
 
-EQ GF@a string@\065B string@A\066
+EQ GF@a string@\065B string@\065B
 WRITE GF@a
 
 EQ GF@a string@abc nil@nil

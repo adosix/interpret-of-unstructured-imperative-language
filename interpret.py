@@ -43,10 +43,14 @@ def process_instructions(root, inp, order):
           order = inst.get('order')
           if opcode == None or order == None:
                error(23,"Opcode or order is missing")
+
           if DEBUG:
                print("===========CURRENT INSTRUCTION===========")
                print(opcode)
                print("=========================================")
+          '''
+          defines what instruction we are going to process
+          '''
           #-----MOVE----
           #-----⟨var⟩ ⟨symb⟩
           if opcode == "MOVE":
@@ -498,7 +502,7 @@ def int2char(val, values, labels):
      set_value(frame_1, var_name_1, values[1])
 
 """
-brief:    saves to variable length of string
+brief:    saves to variable length of the string
 """
 def strlen(val, values, labels):
      whole_value_1 = val[0]
@@ -512,6 +516,7 @@ def strlen(val, values, labels):
 
      typ_2 = get_atrib_type(whole_value_2.attrib["type"])
 
+     #check type of value which has to be string or variable which stores string
      if typ_2 == "var" or typ_2 == "string":
           values.append(check_val(val[1], typ_2))
           if typ_2 == "var":
@@ -535,7 +540,7 @@ brief:    exits program with given retrun code
 """
 def exit_i(val, values, labels):
      typ1 = get_atrib_type(val[0].attrib["type"])
-     
+     #check type of value which has to be int or variable which stores int
      if typ1 == "int" or typ1 == "var":
           values.append(check_val(val[0], typ1))
           if typ1 == "var":
@@ -557,6 +562,7 @@ def get_next_inst(root,order):
      best_so_far_i = None
      for inst in root:
           order_act = int(inst.get('order'))
+          #comparing order of instruction to get the following one
           if order_act > int(order):
                if best_so_far_o == None:
                     best_so_far_o = order_act
@@ -679,9 +685,6 @@ def write(inst, values, global_frame, local_frame, temp_frame):
      if DEBUG:
           print("----Type of value, printed value------")
           print(typ)
-     #values[0] = str(values[0]).encode('utf-8').decode('unicode_escape').encode('latin-1').decode("utf-8") 
-     #values[0] =bytes(values[0], 'utf-8')
-    # values[0] = values[0].decode("unicode_escape")#string_escape
      print(values[0], end='')
 
      if DEBUG:
@@ -700,6 +703,7 @@ def aritmetic_op(val, values, labels, op_type, op_eq):
 
      typ1 = get_atrib_type(val[1].attrib["type"])
      typ2 = get_atrib_type(val[2].attrib["type"])
+     #check for boolean operations
      if op_type == "bool":
           if ((typ1 != "var" and typ2 != "var") and (typ1 != "nil" and typ2 != "nil") and (typ1 != typ2)):
                error(53,"Wrong type of operand for EQ: " + str(typ1) + " + " + str(typ2))
@@ -721,7 +725,7 @@ def aritmetic_op(val, values, labels, op_type, op_eq):
          # check_val(values[1],typ1)
      else:
           print(typ1)
-          error(53,"Wrong type of operand 1 some: " + str(val))
+          error(53,"Wrong type of operand/s: " + str(val))
      if typ2 == op_type or typ2 == "var" or op_type=="bool" or op_eq:
           values.append(check_val(val[2], typ2))
           if typ2 == "var":
@@ -907,7 +911,7 @@ def concat(val, values, labels):
                values[1] = get_var(values[1][:2], values[1][3:]     )
                is_string(values[1])
      else:
-          error(53,"Wrong type of operand atring:" + str(val))
+          error(53,"Wrong type of operand string:" + str(val))
      if typ2 == "string" or typ2 == "var":
           values.append(check_val(val[2], typ2))
           if typ2 == "var":
@@ -915,7 +919,7 @@ def concat(val, values, labels):
                values[2] = get_var(values[2][:2], values[2][3:]     )
                is_string(values[2])       
      else:
-          error(53,"Wrong type of operand atring:" + str(val))
+          error(53,"Wrong type of operand string:" + str(val))
 
      var_check(values[0][:2], values[0][3:])
 
@@ -1085,7 +1089,7 @@ def var_type_control(var):
                return "int"
 
 """
-brief:    checks integer value
+brief:    checks value according type
 """
 def check_val(value, type):
      if type == "var":
@@ -1123,6 +1127,9 @@ def check_val(value, type):
      elif type == "label":
           return value.text
 
+"""
+brief:    defines variable
+"""
 def def_var(frame_name, var_name     ):
      if DEBUG:
           print("----Frame, var_name---------------")
@@ -1144,6 +1151,9 @@ def def_var(frame_name, var_name     ):
      else:
           error(32,"invalid frame name, only GF, LF and TF are allowed")
 
+"""
+brief:    checks basic structure of the instruction
+"""
 def check_instruction(inst):
      arg_n = 1
      if inst.get('opcode') == None or inst.get('order') == None:
@@ -1155,6 +1165,9 @@ def check_instruction(inst):
                error(32,"Wrong name of argument of the instruction "+ str(inst[0]))
           arg_n += 1
 
+"""
+brief:    check Label: correct number of arguments and if it wasn't already defined
+"""
 def labels_check(root):
      for inst in root:
           check_instruction(inst)
@@ -1167,11 +1180,15 @@ def labels_check(root):
           print("----List of labels-----")
           print(labels)
           print("----------------------------------")
-
+"""
+brief:    checks correct number of argument
+"""
 def correct_n_of_arg(inst, n_of_arg):
      if len(inst) != n_of_arg:
           error(32, "invalid_n_of_args", inst)
-
+"""
+brief:    basic structure of xml file describing program
+"""
 def check_syntax(xml_tree):
      root = xml_tree.getroot()
      if(root.tag != "program") or (root.attrib['language']  !=  "IPPcode20"):
@@ -1180,7 +1197,9 @@ def check_syntax(xml_tree):
           if (atr != "language") and (atr != "name") and (atr != "description"):
                error(32,"Root element has invalid arguments")  
      return root   
-
+"""
+brief:    parses xml file
+"""
 def parse_file(file_path):
      try:
           tree = ET.parse(file_path)
@@ -1191,7 +1210,9 @@ def parse_file(file_path):
      except:
           error(31)
      
-
+"""
+brief:    processes arguments of the program
+"""
 def processArguments():
      # check correct number of arguments
      if len(sys.argv) != 2 and len(sys.argv) != 3:
@@ -1231,7 +1252,9 @@ def processArguments():
                src = sys.argv[1][9:] 
           else:
                error(10,"third argument wrong")
-
+"""
+brief:    prints error quote and exits program with given error value
+"""
 def error(err_val, desc="", inst = None):
      switch = {
           10: "Wrong combination of parameters",
@@ -1253,7 +1276,9 @@ def error(err_val, desc="", inst = None):
           print(sys.stderr,desc)
      print(sys.stderr,str(err_val) + ": " + switch.get(err_val,": Invalid error code"))
      sys.exit(err_val)
-
+"""
+brief:    defines global variables and calls main()
+"""
 if __name__ == "__main__":
      local_frame = None
      temp_frame = None
